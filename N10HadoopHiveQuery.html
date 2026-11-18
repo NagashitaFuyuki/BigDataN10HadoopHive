@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N10Hive: nhập dữ liệu và truy vấn HiveQL</title>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface2:#f0f2f6; --text:#1b2330; --muted:#586374; --line:#dfe3ea;
+  --accent:#2356d3; --accent-soft:#e6edfd; --ok:#17794a; --ok-soft:#e3f4ea; --warn:#9a5700; --warn-soft:#fff2dc;
+  --danger:#b3261e; --danger-soft:#fde8e6; --info:#245c9e; --info-soft:#e5f0fb;
+  --code-bg:#0c1320; --code-bar:#162133; --code-text:#d7e3f4; --code-muted:#8fa3bd;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+    --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+    --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+    --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+  --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+  --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+  --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+p{margin:0}
+p code,li code,td code,.step-body code,.hero code,.note code,.sec-intro code{background:var(--surface2);border:1px solid var(--line);
+  padding:.05em .38em;border-radius:5px;font-size:.88em;word-break:break-word}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.topbar-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
+.menu-btn{white-space:nowrap;display:none;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
+.brand{font-weight:700;white-space:nowrap}
+.prog{flex:1;min-width:0}
+.prog-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.tb-btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap;text-decoration:none}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb-btn.primary:hover{color:#fff;filter:brightness(1.08)}
+.short{display:none}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px}
+aside{position:sticky;top:64px;align-self:start;max-height:calc(100vh - 76px);overflow:auto;padding:20px 0}
+aside h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px 10px}
+aside a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;font-size:14.5px;line-height:1.35}
+aside a:hover{background:var(--surface2)}
+aside a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+aside a.sub{margin-left:14px;font-size:13.5px;padding:5px 10px}
+aside .ico{flex:none;width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);display:grid;place-items:center;font-size:11.5px;font-weight:700;color:var(--muted)}
+aside a.sub .ico{width:21px;height:21px;font-size:10.5px}
+aside a.complete .ico{background:var(--ok);border-color:var(--ok);color:#fff}
+aside .grp{margin:10px 0 2px 10px;font-size:12px;color:var(--muted)}
+main{padding:24px 0 80px;min-width:0;overflow-wrap:anywhere}
+
+/* ---------- hero ---------- */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 28px 24px;box-shadow:var(--shadow)}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+.hero h1{font-size:clamp(1.55rem,3.2vw,2.1rem);line-height:1.2;margin:0 0 8px;letter-spacing:-.01em}
+.hero>p{color:var(--muted);max-width:70ch}
+h2.sec{font-size:1.45rem;line-height:1.25;margin:44px 0 6px;display:flex;align-items:center;gap:12px;letter-spacing:-.005em}
+h2.sec .badge{flex:none;width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:700}
+h2.sec.complete .badge{background:var(--ok)}
+.sec-intro{color:var(--muted);margin:4px 0 16px;max-width:78ch}
+
+/* flow */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin-top:22px}
+.node{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.node .tag{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border:0;padding:0;margin:0;font-weight:400;white-space:normal;background:none}
+.node h3{margin:4px 0 8px;font-size:15px}
+.node ul{list-style:none;margin:0;padding:0;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted);display:grid;gap:3px;overflow-wrap:anywhere}
+.node.hive{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--accent);text-align:center;min-width:64px}
+.arrow svg{width:36px;height:14px;stroke:var(--accent);fill:none;stroke-width:2}
+@media (max-width:820px){
+  .flow{grid-template-columns:1fr}
+  .arrow{flex-direction:row;justify-content:flex-start;padding-left:14px}
+  .arrow svg{transform:rotate(90deg);width:24px}
+}
+
+/* ---------- steps ---------- */
+.step{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px;margin:14px 0;box-shadow:var(--shadow);overflow:hidden}
+.step.done{border-left-color:var(--ok)}
+.step.key{border-left-color:var(--warn)}
+.step.done.key{border-left-color:var(--ok)}
+.step-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 0;flex-wrap:wrap}
+.num{flex:none;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin-top:3px}
+.step.done .num{background:var(--ok);border-color:var(--ok);color:#fff}
+.step-head h3{margin:0;font-size:1.05rem;line-height:1.4;flex:1 1 240px}
+.tag{font-size:11.5px;font-weight:600;padding:1px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;margin-top:3px}
+.tag.ps{color:var(--info);background:var(--info-soft);border-color:transparent}
+.tag.bl{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.step-sub{padding:2px 16px 0 16px;color:var(--muted);font-size:14.5px}
+.step-body{padding:8px 16px 6px}
+.foot{display:flex;align-items:center;justify-content:flex-end;padding:8px 16px 12px}
+.chk{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;font-size:14.5px;font-weight:600;
+  padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface2)}
+.chk:hover{border-color:var(--ok)}
+.chk input{width:18px;height:18px;accent-color:var(--ok);margin:0;cursor:pointer}
+.step.done .chk{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+
+/* ---------- code ---------- */
+.cmd-desc{margin:12px 0 0;font-size:14.5px;color:var(--muted)}
+.cmd-desc+.code{margin-top:6px}
+.code{margin:10px 0;border-radius:10px;overflow:hidden;background:var(--code-bg);border:1px solid var(--code-bar)}
+.code-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--code-bar);padding:5px 8px 5px 12px}
+.code-bar .loc{font-size:12px;color:var(--code-muted);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy{border:1px solid #2a3b55;background:#1c2a40;color:#cfe0f7;border-radius:6px;padding:3px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex:none}
+.copy:hover{background:#26395a}
+.copy.ok{background:#14532d;border-color:#14532d;color:#d1fae5}
+.step-body .code pre code,.code pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit;word-break:normal}
+.code pre{margin:0;padding:12px 14px;overflow-x:auto;color:var(--code-text);font-size:13.2px;line-height:1.55;tab-size:2;white-space:pre;overflow-wrap:normal}
+.expect{margin:8px 0 10px;border-left:3px solid var(--ok);background:var(--ok-soft);border-radius:0 8px 8px 0;padding:6px 12px 8px}
+.expect .lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ok);margin-bottom:2px}
+.expect div.t{font-size:14.5px}
+.note{margin:10px 0;border-radius:8px;padding:9px 13px;font-size:14.5px;border-left:3px solid var(--warn);background:var(--warn-soft)}
+.note b.t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px;color:var(--warn)}
+.note.info{background:var(--info-soft);border-color:var(--info)}
+.note.info b.t{color:var(--info)}
+.note.danger{background:var(--danger-soft);border-color:var(--danger)}
+.note.danger b.t{color:var(--danger)}
+
+/* ---------- tables / counts / queries ---------- */
+.tw{overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface2)}
+tr:last-child td{border-bottom:0}
+td:first-child{font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:nowrap}
+.rows{display:grid;gap:8px;margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.row{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;font-size:13.5px}
+.row .nm{font-family:ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+.row .bg{height:12px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.row .bv{height:100%;background:var(--accent);border-radius:99px;min-width:3px}
+.row .v{text-align:right;font-family:ui-monospace,Consolas,monospace;color:var(--muted)}
+.small{font-size:13px;color:var(--muted)}
+@media (max-width:520px){.row{grid-template-columns:100px 1fr 70px}}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tab-grp{margin-top:14px}
+.tab-lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tab{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:99px;padding:5px 12px;cursor:pointer}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.qp{margin-top:6px}
+.qp p{max-width:72ch;margin-top:10px}
+.pill{display:inline-block;font-size:12px;font-family:ui-monospace,Consolas,monospace;background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin-right:6px;color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:8px 16px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:920px){
+  .wrap{grid-template-columns:1fr}
+  .menu-btn{display:inline-block}
+  aside{position:fixed;top:57px;left:0;bottom:0;width:min(86vw,320px);max-height:none;background:var(--surface);border-right:1px solid var(--line);
+    padding:14px 10px;transform:translateX(-102%);transition:transform .2s;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  aside.open{transform:none}
+  .brand{display:none}
+  .hero{padding:20px 16px}
+}
+@media (max-width:520px){
+  .tb-btn.hide-sm{display:none}
+  .long,.prog-label .pl{display:none}
+  .short{display:inline}
+  .prog-label{justify-content:flex-end}
+  .topbar-in{gap:8px;padding:8px 12px}
+  .menu-btn{padding:6px 9px;font-size:14px}
+  .tb-btn{padding:6px 10px}
+  .code pre{font-size:12.5px}
+}
+@media print{
+  .topbar,aside,.copy,.foot{display:none!important}
+  .wrap{display:block}
+  body{background:#fff}
+  .step,.rows,.tw{box-shadow:none;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="topbar-in">
+  <button class="menu-btn" id="menuBtn" type="button" aria-label="Mở mục lục">☰ Mục lục</button>
+  <div class="brand">N10Hive</div>
+  <div class="prog">
+    <div class="prog-label"><span class="pl">Tiến độ các bước</span><span id="count">0 / 0</span></div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="fill"></i></div>
+  </div>
+  <button class="tb-btn primary" id="nextBtn" type="button"><span class="long">Đến bước chưa xong</span><span class="short">Tiếp</span> →</button>
+  <button class="tb-btn hide-sm" id="reset" type="button">Đặt lại</button>
+</div></div>
+
+<div class="wrap">
+<aside id="side" aria-label="Mục lục"><h2>Mục lục</h2><nav id="toc"></nav></aside>
+<main>
+
+<section class="part" id="overview">
+  <div class="hero">
+    <div class="eyebrow">Hadoop 3.3.6 · Hive 4.0.1</div>
+    <h1>Nhập dữ liệu và truy vấn HiveQL</h1>
+    <p>Cửa hàng linh kiện máy tính: 15 bảng gốc, 6 bảng mở rộng và các bảng kiểu phức hợp. Làm lần lượt từng bước, tick ô «Đã xong bước này» để lưu tiến độ ngay trong trình duyệt.</p>
+    <div class="flow" aria-label="Luồng dữ liệu">
+      <div class="node"><div class="tag">Máy Windows</div><h3>Thư mục N10Hive</h3>
+        <ul><li>data/original (15)</li><li>data/generated (6)</li><li>sql/ (8 file)</li></ul></div>
+      <div class="arrow"><span>docker cp</span><svg viewBox="0 0 36 14"><path d="M0 7h32M26 1l6 6-6 6"/></svg></div>
+      <div class="node"><div class="tag">Container hadoop-master</div><h3>Thư mục tạm</h3>
+        <ul><li>/tmp/N10Hive/original</li><li>/tmp/N10Hive/generated</li><li>/opt/hive-practice/sql</li></ul></div>
+      <div class="arrow"><span>hdfs dfs -put</span><svg viewBox="0 0 36 14"><path d="M0 7h32M26 1l6 6-6 6"/></svg></div>
+      <div class="node"><div class="tag">HDFS</div><h3>Kho dữ liệu</h3>
+        <ul><li>/data/N10Hive/original</li><li>/data/N10Hive/generated</li></ul></div>
+      <div class="arrow"><span>LOAD DATA</span><svg viewBox="0 0 36 14"><path d="M0 7h32M26 1l6 6-6 6"/></svg></div>
+      <div class="node hive"><div class="tag">Hive</div><h3>Database N10Hive</h3>
+        <ul><li>15 bảng gốc</li><li>6 bảng mở rộng</li><li>bảng ARRAY, MAP, STRUCT</li><li>tổng 25 bảng</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="steps">
+  <h2 class="sec" id="stepsTitle"><span class="badge">1</span>Các bước thực hiện</h2>
+  <p class="sec-intro">Khung có nhãn <strong>PowerShell</strong> chạy trên Windows, nhãn <strong>Beeline</strong> chạy trong cửa sổ Beeline. Bấm <strong>Copy</strong> ở mỗi khối rồi dán vào cửa sổ tương ứng.</p>
+  <div id="stepList"></div>
+</section>
+
+<section class="part" id="order">
+  <h2 class="sec"><span class="badge">2</span>Thứ tự chạy file SQL</h2>
+  <p class="sec-intro">Dùng <code>!run /opt/hive-practice/sql/&lt;tên file&gt;</code> trong Beeline. Mỗi file từ 01 đến 07 tự có <code>USE N10Hive;</code> ở dòng đầu.</p>
+  <div class="tw"><table>
+    <thead><tr><th>File</th><th>Việc làm</th><th>Kiểm tra</th></tr></thead>
+    <tbody>
+      <tr><td>00_create_database</td><td>Tạo database N10Hive rồi <code>USE</code></td><td><code>SHOW DATABASES;</code></td></tr>
+      <tr><td>01_create_original_tables</td><td>Tạo 15 bảng gốc</td><td><code>SHOW TABLES;</code></td></tr>
+      <tr><td>02_load_original_data</td><td>Nạp 15 file từ /data/N10Hive/original</td><td>sp = 15 dòng, spcuthe = 120 dòng</td></tr>
+      <tr><td>03_create_bigdata_tables</td><td>Tạo các bảng mở rộng</td><td><code>SHOW TABLES;</code></td></tr>
+      <tr><td>04_load_bigdata</td><td>Nạp 6 file từ /data/N10Hive/generated</td><td>web_events = 100.000 dòng</td></tr>
+      <tr><td>05_complex_types</td><td>Tạo bảng ARRAY, MAP, STRUCT</td><td><code>SELECT * FROM products_array;</code></td></tr>
+      <tr><td>07_practice_queries</td><td>Truy vấn thực hành</td><td>Xem mục Truy vấn mẫu bên dưới</td></tr>
+      <tr><td>06_crud_acid</td><td>Thực hành INSERT, UPDATE, DELETE</td><td>Kiểm tra bảng sau khi chạy</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note info"><b class="t">Lưu ý</b>Hướng dẫn gốc chạy 07 trước 06 (mục 6 rồi mục 7), nên số thứ tự file không trùng thứ tự chạy.</div>
+</section>
+
+<section class="part" id="counts">
+  <h2 class="sec"><span class="badge">3</span>Số dòng cần thấy</h2>
+  <p class="sec-intro">Các con số hướng dẫn nêu rõ. Các bảng còn lại bạn tự đối chiếu bằng <code>SELECT COUNT(*)</code>.</p>
+  <div class="rows" id="rows"></div>
+</section>
+
+<section class="part" id="queries">
+  <h2 class="sec"><span class="badge">4</span>Truy vấn mẫu</h2>
+  <p class="sec-intro">Các câu lệnh theo từng file, kèm giải thích ngắn: file 05 (kiểu dữ liệu phức hợp) và file 07 (truy vấn thực hành). Chạy trong Beeline sau <code>USE N10Hive;</code>.</p>
+  <div id="tabs" role="tablist"></div>
+  <div class="qp" id="qp" role="tabpanel"></div>
+</section>
+
+<section class="part" id="redo">
+  <h2 class="sec"><span class="badge">5</span>Xóa để làm lại từ đầu</h2>
+  <p class="sec-intro">Dùng khi cần quay lại video hoặc nạp lại dữ liệu. Chạy trong PowerShell, từ phần đã làm tới phần chưa làm.</p>
+  <div id="resetCmds"></div>
+</section>
+
+<section class="part" id="pitfalls">
+  <h2 class="sec"><span class="badge">6</span>Những chỗ dễ vấp</h2>
+  <div class="note info"><b class="t">1</b>Không cần gõ <code>CREATE DATABASE</code> bằng tay nếu đã chạy file 00. Hai cách cho cùng kết quả.</div>
+  <div class="note info"><b class="t">2</b><code>LOAD DATA INPATH</code> di chuyển file trên HDFS vào kho của Hive. Muốn nạp lại, chạy lại lệnh <code>hdfs dfs -put -f</code> trước.</div>
+  <div class="note info"><b class="t">3</b>HDFS phân biệt hoa thường. File gốc viết hoa (<code>CTDON.tsv</code>), file mở rộng viết thường (<code>don_morong.tsv</code>). Đường dẫn trong file 02 và 04 phải đúng như vậy.</div>
+  <div class="note info"><b class="t">4</b>Trang này đánh số lại truy vấn mẫu theo file: 05.1 đến 05.5 và 07.1 đến 07.7. Hướng dẫn gốc ghi các truy vấn của file 07 là 6.1 đến 6.7 và có hai mục đều là 6.5; mục thứ hai (thống kê theo thiết bị) là 07.6 trong trang này.</div>
+  <div class="note"><b class="t">5</b>Lỗi <code>Invalid function map_from_entries</code>: hàm này không có trong Hive 4.0.1. Bước 4 đã có lệnh <code>sed</code> thay bằng <code>str_to_map</code>. Nếu bạn chạy lại <code>docker cp .\sql\.</code>, file 05 bị chép đè về bản gốc nên phải chạy lại lệnh <code>sed</code> đó.</div>
+  <div class="note"><b class="t">6</b>Truy vấn <code>INSERT</code> vào bảng <code>STORED AS ORC</code> báo <code>return code 2</code> và log YARN có <code>Internal.checkNotNull</code>: do xung đột Protobuf. Cách xử lý nằm ở mục 7b của hướng dẫn cài đặt Hadoop/Hive (hai property <code>hive.aux.jars.path</code> và <code>mapreduce.job.user.classpath.first</code>).</div>
+</section>
+
+</main>
+</div>
+<div class="toast" id="toast">Đã copy</div>
+
+<script>
+const STEPS=[
+ {t:"Khởi động lại (chỉ khi tắt máy hoặc container)",s:"Bật Hadoop và HiveServer2, rồi vào Beeline",w:"PowerShell",
+  cmds:[["Bật Hadoop master và HiveServer2 (cổng 10000)","docker exec hadoop-master bash /root/start-all.sh"],
+        ["Vào container","docker exec -it hadoop-master bash"],
+        ["Kết nối Beeline","beeline -u jdbc:hive2://localhost:10000/default"]],
+  note:"Bỏ qua bước này nếu container đang chạy. Giải nén N10Hive.zip và mở terminal trong thư mục N10Hive trước khi làm các bước sau."},
+ {t:"Copy dữ liệu từ Windows vào container",s:"Tạo thư mục tạm và chép thư mục data",w:"PowerShell",
+  cmds:[["Tạo thư mục tạm","docker exec hadoop-master mkdir -p /tmp/N10Hive"],
+        ["Chép thư mục data (chạy trong thư mục N10Hive)","docker cp .\\data\\. hadoop-master:/tmp/N10Hive/"],
+        ["Kiểm tra","docker exec hadoop-master ls -R /tmp/N10Hive"]],
+  expect:"Thấy hai thư mục original và generated."},
+ {t:"Đưa dữ liệu lên HDFS",s:"15 file gốc và 6 file mở rộng",w:"PowerShell",
+  cmds:[["Tạo thư mục trên HDFS","docker exec hadoop-master /root/hadoop-3.3.6/bin/hdfs dfs -mkdir -p /data/N10Hive/original /data/N10Hive/generated"],
+        ["Đưa 15 file gốc lên","docker exec hadoop-master bash -c \"/root/hadoop-3.3.6/bin/hdfs dfs -put -f /tmp/N10Hive/original/* /data/N10Hive/original/\""],
+        ["Đưa 6 file mở rộng lên","docker exec hadoop-master bash -c \"/root/hadoop-3.3.6/bin/hdfs dfs -put -f /tmp/N10Hive/generated/* /data/N10Hive/generated/\""],
+        ["Kiểm tra","docker exec hadoop-master /root/hadoop-3.3.6/bin/hdfs dfs -ls /data/N10Hive/original\ndocker exec hadoop-master /root/hadoop-3.3.6/bin/hdfs dfs -ls /data/N10Hive/generated"]],
+  expect:"original có 15 file, generated có 6 file (5 file *_morong và web_events.tsv).",
+  note:"Lệnh gọi hdfs bằng đường dẫn đầy đủ vì docker exec không nạp PATH của Hadoop. Nếu đã vào container bằng docker exec -it hadoop-master bash thì gõ hdfs dfs ... là đủ."},
+ {t:"Copy các file SQL vào container và sửa file 05",s:"8 file từ 00 đến 07, rồi vá hàm map_from_entries trong file 05",w:"PowerShell",
+  cmds:[["Tạo thư mục","docker exec hadoop-master mkdir -p /opt/hive-practice/sql"],
+        ["Chép file SQL","docker cp .\\sql\\. hadoop-master:/opt/hive-practice/sql/"],
+        ["Kiểm tra","docker exec hadoop-master ls /opt/hive-practice/sql","Thấy đủ 8 file SQL từ 00 đến 07."],
+        ["Vào container","docker exec -it hadoop-master bash"],
+        ["Sửa file 05 (Hive 4.0.1 không có hàm map_from_entries), chạy trong container",`sed -i "s#map_from_entries(collect_list(named_struct('key', ld.name, 'value', d.name)))#str_to_map(concat_ws('~', collect_list(concat(ld.name, '=', d.name))), '~', '=')#" /opt/hive-practice/sql/05_complex_types.sql
+grep -n "str_to_map\\|map_from_entries" /opt/hive-practice/sql/05_complex_types.sql
+exit`,"Thấy một dòng có str_to_map và không còn dòng nào chứa map_from_entries."]],
+  note:"Hai lệnh cuối chỉ cần chạy một lần sau khi chép file SQL. Nếu chạy lại lệnh docker cp ở trên, file 05 bị chép đè về bản gốc và phải chạy lại lệnh sed. Khóa hoặc giá trị chứa ký tự ~ hoặc = sẽ làm MAP bị tách sai."},
+ {t:"Tạo database, 15 bảng gốc và nạp dữ liệu",s:"File 00, 01, 02",w:"Beeline",
+  cmds:[["Vào Beeline","docker exec -it hadoop-master bash\nbeeline -u jdbc:hive2://localhost:10000/default"],
+        ["Chạy lần lượt ba file","!run /opt/hive-practice/sql/00_create_database.sql\n!run /opt/hive-practice/sql/01_create_original_tables.sql\n!run /opt/hive-practice/sql/02_load_original_data.sql"],
+        ["Kiểm tra dữ liệu gốc","SELECT COUNT(*) FROM sp;\nSELECT COUNT(*) FROM spcuthe;\nSELECT COUNT(*) FROM ctdon;\nSELECT COUNT(*) FROM review;"]],
+  expect:"sp có 15 dòng, spcuthe có 120 dòng."},
+ {t:"Tạo và nạp dữ liệu big data mở rộng",s:"File 03, 04",w:"Beeline",
+  cmds:[["Tạo bảng và nạp dữ liệu","!run /opt/hive-practice/sql/03_create_bigdata_tables.sql\n!run /opt/hive-practice/sql/04_load_bigdata.sql"],
+        ["Kiểm tra","SELECT COUNT(*) FROM khachhang_morong;\nSELECT COUNT(*) FROM don_morong;\nSELECT COUNT(*) FROM ctdon_morong;\nSELECT COUNT(*) FROM hd_morong;\nSELECT COUNT(*) FROM review_morong;\nSELECT COUNT(*) FROM web_events;"],
+        ["Xem thử web_events","SELECT * FROM web_events LIMIT 20;"]],
+  expect:"web_events có 100.000 dòng."},
+ {t:"Kiểu dữ liệu phức hợp ARRAY, MAP, STRUCT",s:"File 05",w:"Beeline",
+  cmds:[["Chống lỗi Hive nhận Join thành Map Join","SET hive.auto.convert.join=false;","","Tắt việc Hive tự chuyển JOIN thành Map Join, vốn có thể gây lỗi tác vụ cục bộ trên môi trường này. Chỉ có tác dụng trong phiên Beeline hiện tại."],
+        ["Tạo bảng","!run /opt/hive-practice/sql/05_complex_types.sql","","Chạy file 05: tạo 4 bảng ORC (products_array, products_map, products_struct, inventory_array) rồi nạp dữ liệu từ các bảng gốc. Các lệnh INSERT sinh nhiều job MapReduce nên mất vài phút."],
+        ["ARRAY","SELECT * FROM products_array;\nSELECT product_name, features[0]\nFROM products_array;","","ARRAY là mảng nhiều giá trị cùng kiểu trong một ô, ở đây là danh sách đặc trưng của sản phẩm. SELECT * xem cả mảng; features[0] lấy phần tử đầu tiên (chỉ số bắt đầu từ 0)."],
+        ["MAP","SELECT * FROM products_map;\nSELECT product_name, specifications\nFROM products_map;","","MAP lưu các cặp khóa và giá trị, ở đây là tên đặc trưng và giá trị của nó. Cột specifications được in ra cả cặp."],
+        ["STRUCT","SELECT product_name,\n       product_info.brand,\n       product_info.category,\n       product_info.warranty_months\nFROM products_struct;","","STRUCT gom nhiều trường có tên và kiểu riêng vào một cột (thương hiệu, danh mục, số tháng bảo hành). Đọc từng trường bằng dấu chấm, ví dụ product_info.brand."],
+        ["EXPLODE","SELECT product_id, serial_number\nFROM inventory_array\nLATERAL VIEW EXPLODE(serial_numbers) e AS serial_number\nLIMIT 30;","","EXPLODE bung mảng serial_numbers thành nhiều dòng, mỗi serial một dòng, giữ nguyên product_id. LIMIT 30 chỉ lấy 30 dòng đầu."]],
+  note:"Nội dung từng câu lệnh của file 05, kèm giải thích, có ở mục Truy vấn mẫu (nhóm File 05)."},
+ {t:"Truy vấn thực hành",s:"File 07, gồm JOIN, UNION ALL, GROUP BY, Window Function",w:"Beeline",
+  cmds:[["Bật Transaction Manager","SET hive.txn.manager = org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;\nSET hive.support.concurrency = true;"],
+        ["Chạy file","!run /opt/hive-practice/sql/07_practice_queries.sql"]],
+  note:"Nội dung từng truy vấn có ở mục Truy vấn mẫu bên dưới."},
+ {t:"Thực hành CRUD (ACID)",s:"File 06",w:"Beeline",
+  cmds:[["Chạy file","!run /opt/hive-practice/sql/06_crud_acid.sql"]]},
+ {t:"Kiểm tra tổng thể",s:"Đủ 25 bảng và dữ liệu hợp lý",w:"Beeline",
+  cmds:[["Danh sách bảng","USE N10Hive;\nSHOW TABLES;"],
+        ["Đếm dòng","SELECT COUNT(*) FROM sp;\nSELECT COUNT(*) FROM spcuthe;\nSELECT COUNT(*) FROM khachhang_morong;\nSELECT COUNT(*) FROM don_morong;\nSELECT COUNT(*) FROM ctdon_morong;\nSELECT COUNT(*) FROM hd_morong;\nSELECT COUNT(*) FROM review_morong;\nSELECT COUNT(*) FROM web_events;"],
+        ["Xem mẫu bảng phức hợp","SELECT * FROM products_array LIMIT 5;\nSELECT * FROM products_map LIMIT 5;\nSELECT * FROM products_struct LIMIT 5;\nSELECT * FROM inventory_array LIMIT 5;"]],
+  expect:"SHOW TABLES liệt kê tổng cộng 25 bảng."}
+];
+
+const COUNTS=[["sp",15],["spcuthe",120],["web_events",100000]];
+
+const QUERIES=[
+ /* ===== File 05: kiểu dữ liệu phức hợp ===== */
+ {g:"05",id:"05.1",n:"ARRAY",
+  d:"Gom các đặc trưng của mỗi sản phẩm thành một mảng STRING bằng collect_list. LEFT JOIN giữ cả sản phẩm chưa có đặc trưng (mảng rỗng). Truy cập phần tử bằng chỉ số, bắt đầu từ 0, ví dụ features[0]. Câu INSERT sinh nhiều job MapReduce nên mất khoảng 1 đến 2 phút.",
+  q:[["Tạo bảng và nạp dữ liệu (file 05)",`DROP TABLE IF EXISTS products_array;
+CREATE TABLE products_array (
+  product_id INT,
+  product_name STRING,
+  features ARRAY<STRING>
+) STORED AS ORC;
+
+INSERT OVERWRITE TABLE products_array
+SELECT p.id, p.name, collect_list(concat(ld.name, ': ', d.name))
+FROM sp p
+LEFT JOIN spdt x ON p.id = x.id_sp
+LEFT JOIN datrung d ON x.id_dt = d.id
+LEFT JOIN loaidt ld ON d.id_ldt = ld.id
+GROUP BY p.id, p.name;`],
+     ["Truy vấn kiểm tra",`SELECT * FROM products_array;
+SELECT product_name, features[0] AS first_feature FROM products_array LIMIT 10;`]],
+  note:"File 05 có sẵn dòng SET hive.auto.convert.join=false; ở đầu để tránh lỗi Map Join."},
+ {g:"05",id:"05.2",n:"MAP",
+  d:"MAP<STRING,STRING> lưu cặp tên đặc trưng và giá trị. Hive 4.0.1 không có hàm map_from_entries, nên dùng str_to_map: nối từng cặp thành chuỗi tên=giá trị, ngăn cách bằng dấu ~, rồi tách lại thành MAP. Một sản phẩm không nên có hai khóa trùng nhau, nếu trùng thì giá trị sau ghi đè giá trị trước.",
+  q:[["Tạo bảng và nạp dữ liệu (file 05, sau khi đã sửa ở bước 3)",`DROP TABLE IF EXISTS products_map;
+CREATE TABLE products_map (
+  product_id INT,
+  product_name STRING,
+  specifications MAP<STRING, STRING>
+) STORED AS ORC;
+
+INSERT OVERWRITE TABLE products_map
+SELECT p.id, p.name,
+       str_to_map(concat_ws('~', collect_list(concat(ld.name, '=', d.name))), '~', '=')
+FROM sp p
+JOIN spdt x ON p.id = x.id_sp
+JOIN datrung d ON x.id_dt = d.id
+JOIN loaidt ld ON d.id_ldt = ld.id
+GROUP BY p.id, p.name;`],
+     ["Truy vấn kiểm tra",`SELECT * FROM products_map;
+SELECT product_name, specifications FROM products_map LIMIT 10;`]],
+  note:"Bản gốc của file 05 dùng map_from_entries(collect_list(named_struct('key', ..., 'value', ...))). Lệnh sed ở bước 3 đã đổi nó thành str_to_map như trên. Tên hoặc giá trị chứa ký tự ~ hoặc = sẽ làm MAP bị tách sai."},
+ {g:"05",id:"05.3",n:"STRUCT",
+  d:"STRUCT gom nhiều trường có tên và kiểu riêng vào một cột: nhà sản xuất, danh mục và số tháng bảo hành. Tạo bằng named_struct, đọc từng trường bằng dấu chấm như product_info.brand. LEFT JOIN giữ sản phẩm chưa có thương hiệu hoặc loại.",
+  q:[["Tạo bảng và nạp dữ liệu (file 05)",`DROP TABLE IF EXISTS products_struct;
+CREATE TABLE products_struct (
+  product_id INT,
+  product_name STRING,
+  price DECIMAL(15,2),
+  product_info STRUCT<brand:STRING, category:STRING, warranty_months:INT>
+) STORED AS ORC;
+
+INSERT OVERWRITE TABLE products_struct
+SELECT p.id, p.name, p.gia_ban,
+       named_struct('brand', b.name, 'category', c.name, 'warranty_months', p.tg_bh)
+FROM sp p
+LEFT JOIN thieu b ON p.id_thieu = b.id
+LEFT JOIN loaisp c ON p.id_loaisp = c.id;`],
+     ["Truy vấn kiểm tra",`SELECT * FROM products_struct;
+SELECT product_name, product_info.brand, product_info.category,
+       product_info.warranty_months FROM products_struct LIMIT 10;`]]},
+ {g:"05",id:"05.4",n:"ARRAY serial",
+  d:"Gom số serial của từng đơn vị hàng hóa theo sản phẩm thành một mảng, bằng collect_list(serialn) và GROUP BY id_sp. Bảng này được dùng cho ví dụ EXPLODE ở bên cạnh.",
+  q:[["Tạo bảng và nạp dữ liệu (file 05)",`DROP TABLE IF EXISTS inventory_array;
+CREATE TABLE inventory_array (
+  product_id INT,
+  serial_numbers ARRAY<STRING>
+) STORED AS ORC;
+
+INSERT OVERWRITE TABLE inventory_array
+SELECT id_sp, collect_list(serialn)
+FROM spcuthe
+GROUP BY id_sp;`],
+     ["Truy vấn kiểm tra",`SELECT product_id, serial_numbers[0] AS first_serial FROM inventory_array;`]]},
+ {g:"05",id:"05.5",n:"EXPLODE",
+  d:"LATERAL VIEW EXPLODE bung mảng serial_numbers thành nhiều dòng, mỗi serial một dòng, và giữ nguyên product_id ở mỗi dòng. Dùng khi cần lọc, đếm hoặc nối theo từng phần tử của mảng.",
+  q:[["HiveQL (file 05)",`SELECT product_id, serial_number
+FROM inventory_array
+LATERAL VIEW EXPLODE(serial_numbers) e AS serial_number
+LIMIT 30;`]]},
+
+ /* ===== File 07: truy vấn thực hành ===== */
+ {g:"07",id:"07.1",n:"JOIN",d:"Ghép bảng sản phẩm với thương hiệu và loại sản phẩm bằng LEFT JOIN, giữ lại cả sản phẩm chưa có thương hiệu hoặc loại.",
+  q:"SELECT p.id, p.name,\n       b.name AS brand,\n       c.name AS category,\n       p.gia_ban\nFROM sp p\nLEFT JOIN thieu b ON p.id_thieu = b.id\nLEFT JOIN loaisp c ON p.id_loaisp = c.id;"},
+ {g:"07",id:"07.2",n:"UNION ALL",d:"Gộp hai danh sách: sản phẩm giá từ 10 triệu và sản phẩm bảo hành từ 60 tháng. Một sản phẩm thỏa cả hai điều kiện sẽ xuất hiện hai lần vì UNION ALL không loại trùng.",
+  q:"SELECT id, name, gia_ban, 'Gia cao' AS reason\nFROM sp\nWHERE gia_ban >= 10000000\nUNION ALL\nSELECT id, name, gia_ban, 'Bao hanh dai' AS reason\nFROM sp\nWHERE tg_bh >= 60;"},
+ {g:"07",id:"07.3",n:"GROUP BY và SUM",d:"Doanh thu theo sản phẩm (số lượng nhân đơn giá), lấy 10 sản phẩm cao nhất.",
+  q:"SELECT p.name,\n       SUM(d.quantity * d.unit_price) AS revenue\nFROM ctdon_morong d\nJOIN sp p ON d.product_id = p.id\nGROUP BY p.name\nORDER BY revenue DESC\nLIMIT 10;"},
+ {g:"07",id:"07.4",n:"Theo tháng",d:"Số đơn và doanh thu mỗi tháng, chỉ tính đơn có trạng thái Hoàn thành.",
+  q:"SELECT date_format(order_datetime, 'yyyy-MM') AS month,\n       COUNT(*) AS orders,\n       SUM(total_amount) AS revenue\nFROM don_morong\nWHERE status = 'Hoàn thành'\nGROUP BY date_format(order_datetime, 'yyyy-MM')\nORDER BY month;"},
+ {g:"07",id:"07.5",n:"Top lượt xem",d:"10 sản phẩm được xem nhiều nhất trong bảng sự kiện web.",
+  q:"SELECT product_id, COUNT(*) AS views\nFROM web_events\nWHERE action = 'view'\nGROUP BY product_id\nORDER BY views DESC\nLIMIT 10;"},
+ {g:"07",id:"07.6",n:"Theo thiết bị",d:"Đếm số lần mỗi hành động trên từng loại thiết bị.",
+  q:"SELECT device, action, COUNT(*) AS event_count\nFROM web_events\nGROUP BY device, action\nORDER BY device, event_count DESC;"},
+ {g:"07",id:"07.7",n:"Window RANK",d:"Tính doanh thu từng sản phẩm ở truy vấn con, rồi xếp hạng bằng RANK() OVER. Hai sản phẩm bằng doanh thu sẽ cùng hạng.",
+  q:"SELECT product_id, revenue,\n       RANK() OVER (ORDER BY revenue DESC) AS revenue_rank\nFROM (\n  SELECT product_id,\n         SUM(quantity * unit_price) AS revenue\n  FROM ctdon_morong\n  GROUP BY product_id\n) s;"}
+];
+const QGROUPS=[["05","File 05 · Kiểu dữ liệu phức hợp ARRAY, MAP, STRUCT"],["07","File 07 · Truy vấn thực hành"]];
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const KEY="n10hive-done";
+let done=[];
+try{done=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){done=[]}
+if(!Array.isArray(done))done=[];
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(done))}catch(e){}};
+const toastEl=$("#toast");let toastT;
+function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove("show"),1400)}
+
+function cmdBlock(label,code){
+  return `<div class="code"><div class="code-bar"><span class="loc">${esc(label)}</span><button class="copy" type="button">Copy</button></div><pre><code>${esc(code)}</code></pre></div>`;
+}
+const expectBlock=t=>`<div class="expect"><div class="lbl">Kết quả mong đợi</div><div class="t">${esc(t)}</div></div>`;
+
+/* ---------- render steps ---------- */
+$("#stepList").innerHTML=STEPS.map((s,i)=>`
+ <section class="step${i===3?" key":""}" id="step-${i}" data-i="${i}">
+  <div class="step-head"><span class="num">${i}</span><h3>${esc(s.t)}</h3><span class="tag ${s.w==="Beeline"?"bl":"ps"}">${esc(s.w)}</span></div>
+  <p class="step-sub">${esc(s.s)}</p>
+  <div class="step-body">
+    ${s.cmds.map(c=>(c[3]?`<p class="cmd-desc">${esc(c[3])}</p>`:"")+cmdBlock(c[0],c[1])+(c[2]?expectBlock(c[2]):"")).join("")}
+    ${s.expect?expectBlock(s.expect):""}
+    ${s.note?`<div class="note"><b class="t">Ghi chú</b>${esc(s.note)}</div>`:""}
+  </div>
+  <div class="foot"><label class="chk"><input type="checkbox" data-i="${i}"><span>Đã xong bước này</span></label></div>
+ </section>`).join("");
+
+/* ---------- other sections ---------- */
+$("#resetCmds").innerHTML=[
+ ["Xóa thư mục tạm trong container (bước 2)","docker exec hadoop-master rm -rf /tmp/N10Hive\ndocker exec hadoop-master ls /tmp"],
+ ["Xóa dữ liệu trên HDFS (bước 3)","docker exec hadoop-master /root/hadoop-3.3.6/bin/hdfs dfs -rm -r -f -skipTrash /data/N10Hive"],
+ ["Xóa file SQL trong container (bước 4)","docker exec hadoop-master rm -rf /opt/hive-practice/sql"],
+ ["Xóa database và toàn bộ bảng trong Beeline (bước 5 trở đi)","DROP DATABASE IF EXISTS N10Hive CASCADE;\nSHOW DATABASES;"]
+].map(c=>cmdBlock(c[0],c[1])).join("");
+
+const max=Math.log10(Math.max(...COUNTS.map(c=>c[1]))+1);
+$("#rows").innerHTML=COUNTS.map(([n,v])=>`<div class="row"><span class="nm">${n}</span><div class="bg"><div class="bv" style="width:${Math.max(2,Math.log10(v+1)/max*100)}%"></div></div><span class="v">${v.toLocaleString("vi-VN")}</span></div>`).join("")+
+ `<p class="small">Thanh vẽ theo thang logarit để ba bảng cùng nhìn được.</p>`;
+
+function showQ(i){
+  const q=QUERIES[i];
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",+t.dataset.q===i));
+  const blocks=Array.isArray(q.q)?q.q:[["HiveQL",q.q]];
+  $("#qp").innerHTML=`<p><span class="pill">${q.id}</span>${esc(q.d)}</p>`+
+    blocks.map(b=>cmdBlock(b[0],b[1])).join("")+
+    (q.note?`<div class="note"><b class="t">Ghi chú</b>${esc(q.note)}</div>`:"");
+}
+$("#tabs").innerHTML=QGROUPS.map(([g,label])=>
+  `<div class="tab-grp"><div class="tab-lbl">${esc(label)}</div><div class="tabs">`+
+  QUERIES.map((q,i)=>q.g===g?`<button class="tab" role="tab" type="button" data-q="${i}">${q.id} ${esc(q.n)}</button>`:"").join("")+
+  `</div></div>`).join("");
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(b)showQ(+b.dataset.q)});
+showQ(0);
+
+/* ---------- table of contents ---------- */
+const TOC=[
+ ["#overview","i","Tổng quan"],
+ ["#steps","1","Các bước thực hiện",true],
+ ["#order","2","Thứ tự chạy file SQL"],
+ ["#counts","3","Số dòng cần thấy"],
+ ["#queries","4","Truy vấn mẫu"],
+ ["#redo","5","Xóa để làm lại"],
+ ["#pitfalls","6","Những chỗ dễ vấp"]
+];
+$("#toc").innerHTML=TOC.map(([h,n,t,withSteps])=>
+  `<a href="${h}" data-sec="${h.slice(1)}"><span class="ico">${n}</span>${esc(t)}</a>`+
+  (withSteps?STEPS.map((s,i)=>`<a class="sub" href="#step-${i}" data-step="${i}"><span class="ico">${i}</span>${esc(s.t.replace(/\s*\(.*\)$/,""))}</a>`).join(""):"")
+).join("");
+
+/* ---------- progress ---------- */
+const boxes=[...document.querySelectorAll('input[data-i]')];
+function refresh(){
+  boxes.forEach(b=>{
+    const i=+b.dataset.i,on=done.includes(i);
+    b.checked=on;
+    document.getElementById("step-"+i).classList.toggle("done",on);
+    const a=document.querySelector(`#toc a[data-step="${i}"]`);if(a)a.classList.toggle("complete",on);
+  });
+  const total=STEPS.length,n=done.filter(i=>i>=0&&i<total).length,pct=Math.round(n*100/total);
+  $("#count").textContent=n+" / "+total+" ("+pct+"%)";
+  $("#fill").style.width=pct+"%";
+  $("#barWrap").setAttribute("aria-valuenow",pct);
+  $("#stepsTitle").classList.toggle("complete",n===total);
+}
+boxes.forEach(b=>b.addEventListener("change",()=>{
+  const i=+b.dataset.i;
+  done=b.checked?[...new Set([...done,i])]:done.filter(x=>x!==i);
+  save();refresh();
+}));
+$("#reset").addEventListener("click",()=>{if(confirm("Xóa toàn bộ tiến độ trên trang này?")){done=[];save();refresh();toast("Đã đặt lại")}});
+$("#nextBtn").addEventListener("click",()=>{
+  const nxt=boxes.find(b=>!done.includes(+b.dataset.i));
+  if(!nxt){toast("Tất cả các bước đã hoàn thành");return}
+  const el=document.getElementById("step-"+nxt.dataset.i);
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.animate([{boxShadow:"0 0 0 3px var(--accent)"},{boxShadow:"0 0 0 0 transparent"}],{duration:1400});
+});
+
+/* ---------- copy ---------- */
+function fallbackCopy(text){
+  const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;opacity:0";
+  document.body.appendChild(ta);ta.select();let ok=false;
+  try{ok=document.execCommand("copy")}catch(e){}
+  document.body.removeChild(ta);return ok;
+}
+document.addEventListener("click",e=>{
+  const btn=e.target.closest(".copy");if(!btn)return;
+  const text=btn.closest(".code").querySelector("pre").textContent.replace(/\n$/,"");
+  const fin=ok=>{
+    btn.textContent=ok?"Đã copy ✓":"Chọn và copy tay";btn.classList.toggle("ok",ok);
+    if(ok)toast("Đã copy vào clipboard");
+    setTimeout(()=>{btn.textContent="Copy";btn.classList.remove("ok")},1600);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>fin(true),()=>fin(fallbackCopy(text)));
+  }else fin(fallbackCopy(text));
+});
+
+/* ---------- sidebar ---------- */
+const side=$("#side");
+$("#menuBtn").addEventListener("click",()=>side.classList.toggle("open"));
+side.addEventListener("click",e=>{if(e.target.closest("a"))side.classList.remove("open")});
+const secs=[...document.querySelectorAll("section.part, section.step")];
+const tocLinks=[...document.querySelectorAll("#toc a")];
+let ticking=false;
+function spy(){
+  ticking=false;
+  let cur=secs[0];
+  for(const el of secs){ if(el.getBoundingClientRect().top<=120) cur=el; else break; }
+  if(innerHeight+scrollY>=document.documentElement.scrollHeight-4) cur=secs[secs.length-1];
+  const id=cur.id;
+  tocLinks.forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#"+id));
+}
+addEventListener("scroll",()=>{if(!ticking){ticking=true;requestAnimationFrame(spy)}},{passive:true});
+spy();
+
+refresh();
+</script>
+</body>
+</html>

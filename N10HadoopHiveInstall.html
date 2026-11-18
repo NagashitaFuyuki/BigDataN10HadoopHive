@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn Hadoop và Hive trên Docker</title>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface2:#f0f2f6; --text:#1b2330; --muted:#586374; --line:#dfe3ea;
+  --accent:#2356d3; --accent-soft:#e6edfd; --ok:#17794a; --ok-soft:#e3f4ea; --warn:#9a5700; --warn-soft:#fff2dc;
+  --danger:#b3261e; --danger-soft:#fde8e6; --info:#245c9e; --info-soft:#e5f0fb;
+  --code-bg:#0c1320; --code-bar:#162133; --code-text:#d7e3f4; --code-muted:#8fa3bd;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+    --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+    --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+    --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+  --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+  --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+  --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+code,pre,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+p code,li code,td code,.step-body code,summary code,.hero code{background:var(--surface2);border:1px solid var(--line);
+  padding:.05em .38em;border-radius:5px;font-size:.88em;word-break:break-word}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.topbar-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
+.menu-btn{white-space:nowrap;display:none;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
+.brand{font-weight:700;white-space:nowrap}
+.prog{flex:1;min-width:0}
+.prog-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+.bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.tb-btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb-btn.primary:hover{color:#fff;filter:brightness(1.08)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:28px}
+aside{position:sticky;top:64px;align-self:start;max-height:calc(100vh - 76px);overflow:auto;padding:20px 0}
+aside h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px 10px}
+aside a{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;font-size:14.5px;line-height:1.35}
+aside a:hover{background:var(--surface2)}
+aside a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+aside .ico{flex:none;width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);display:grid;place-items:center;font-size:11.5px;font-weight:700;color:var(--muted)}
+aside a.complete .ico{background:var(--ok);border-color:var(--ok);color:#fff}
+aside .cnt{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+main{padding:24px 0 80px;min-width:0;overflow-wrap:anywhere}
+.code,.expect pre,.code pre{overflow-wrap:normal}
+
+/* ---------- hero ---------- */
+.page-head{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px 18px;box-shadow:var(--shadow);margin-bottom:8px}
+.page-head h1{font-size:clamp(1.35rem,3vw,1.8rem);line-height:1.2;margin:0 0 10px}
+.sub-h{font-size:1.05rem;margin:18px 0 6px}
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 28px 24px;box-shadow:var(--shadow)}
+.hero h1{font-size:clamp(1.55rem,3.2vw,2.1rem);line-height:1.2;margin:0 0 8px;letter-spacing:-.01em}
+.hero p{margin:0 0 14px;color:var(--muted);max-width:70ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-size:13px;padding:3px 11px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);color:var(--text)}
+.chip b{color:var(--accent)}
+h2.sec{font-size:1.45rem;line-height:1.25;margin:44px 0 6px;display:flex;align-items:center;gap:12px;letter-spacing:-.005em}
+h2.sec .badge{flex:none;width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:700}
+h2.sec.complete .badge{background:var(--ok)}
+.sec-intro{color:var(--muted);margin:4px 0 16px;max-width:78ch}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.card h4{margin:0 0 4px;font-size:15px}
+.card p{margin:0;font-size:14px;color:var(--muted)}
+.card .fix{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:600;color:var(--ok);background:var(--ok-soft);padding:2px 9px;border-radius:99px}
+.route{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:16px}
+.route .card{border-top:3px solid var(--accent)}
+.route ol{margin:8px 0 10px;padding-left:20px;font-size:14.5px}
+.route .btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---------- steps ---------- */
+.step{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px;margin:14px 0;box-shadow:var(--shadow);overflow:hidden}
+.step.key{border-left-color:var(--warn)}
+.step.check{border-left-color:var(--accent);background:linear-gradient(0deg,var(--surface),var(--surface)),var(--accent-soft)}
+.step.done{border-left-color:var(--ok)}
+.step-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 0;flex-wrap:wrap}
+.num{flex:none;font-size:12.5px;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin-top:3px}
+.step.check .num{background:var(--accent);border-color:var(--accent);color:#fff}
+.step.done .num{background:var(--ok);border-color:var(--ok);color:#fff}
+.step-head h3{margin:0;font-size:1.05rem;line-height:1.4;flex:1 1 240px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:3px}
+.tag{font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.once{color:var(--danger);background:var(--danger-soft);border-color:transparent}
+.tag.rerun{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.tag.onerror{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.tag.key{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.tag.check{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.step-body{padding:10px 16px 6px}
+.step-body p{margin:8px 0}
+.foot{display:flex;align-items:center;justify-content:flex-end;padding:8px 16px 12px}
+.chk{display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none;font-size:14.5px;font-weight:600;
+  padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface2)}
+.chk:hover{border-color:var(--ok)}
+.chk input{width:18px;height:18px;accent-color:var(--ok);margin:0;cursor:pointer}
+.step.done .chk{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+
+/* ---------- code ---------- */
+.code{margin:10px 0;border-radius:10px;overflow:hidden;background:var(--code-bg);border:1px solid var(--code-bar)}
+.code-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--code-bar);padding:5px 8px 5px 12px}
+.code-bar .loc{font-size:12px;color:var(--code-muted);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy{border:1px solid #2a3b55;background:#1c2a40;color:#cfe0f7;border-radius:6px;padding:3px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex:none}
+.copy:hover{background:#26395a}
+.copy.ok{background:#14532d;border-color:#14532d;color:#d1fae5}
+.code pre{margin:0;padding:12px 14px;overflow-x:auto;color:var(--code-text);font-size:13.2px;line-height:1.55;tab-size:2}
+.code pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit}
+.expect{margin:8px 0 10px;border-left:3px solid var(--ok);background:var(--ok-soft);border-radius:0 8px 8px 0;padding:6px 12px 8px}
+.expect .lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ok);margin-bottom:2px}
+.expect pre{margin:0;overflow-x:auto;font-size:12.8px;line-height:1.5;color:var(--text);white-space:pre}
+.note{margin:10px 0;border-radius:8px;padding:9px 13px;font-size:14.5px;border-left:3px solid}
+.note.info{background:var(--info-soft);border-color:var(--info)}
+.note.warn{background:var(--warn-soft);border-color:var(--warn)}
+.note.danger{background:var(--danger-soft);border-color:var(--danger)}
+.note.ok{background:var(--ok-soft);border-color:var(--ok)}
+.note b.t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px}
+.note.info b.t{color:var(--info)}.note.warn b.t{color:var(--warn)}.note.danger b.t{color:var(--danger)}.note.ok b.t{color:var(--ok)}
+
+/* ---------- troubleshooting ---------- */
+.search{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;margin:8px 0 12px}
+.search:focus{outline:2px solid var(--accent);outline-offset:1px}
+details.tr{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:8px 0;box-shadow:var(--shadow)}
+details.tr summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:14.5px;line-height:1.45;list-style:none;display:flex;gap:10px}
+details.tr summary::-webkit-details-marker{display:none}
+details.tr summary::before{content:"▸";color:var(--muted);flex:none;transition:transform .15s}
+details.tr[open] summary::before{transform:rotate(90deg)}
+details.tr .tr-body{padding:0 14px 12px 34px}
+details.tr .tr-body p{margin:6px 0}
+.lbl2{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.empty{display:none;color:var(--muted);padding:10px 4px}
+
+.final{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 16px;box-shadow:var(--shadow)}
+.final label{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.final label:last-child{border-bottom:0}
+.final input{width:18px;height:18px;margin-top:4px;accent-color:var(--ok);flex:none}
+.final label.on span{color:var(--muted);text-decoration:line-through}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:8px 16px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:920px){
+  .wrap{grid-template-columns:1fr}
+  .menu-btn{display:inline-block}
+  aside{position:fixed;top:57px;left:0;bottom:0;width:min(86vw,320px);max-height:none;background:var(--surface);border-right:1px solid var(--line);
+    padding:14px 10px;transform:translateX(-102%);transition:transform .2s;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  aside.open{transform:none}
+  .brand{display:none}
+  .hero{padding:20px 16px}
+}
+.short{display:none}
+@media (max-width:520px){
+  .tb-btn.hide-sm{display:none}
+  .long,.prog-label .pl{display:none}
+  .short{display:inline}
+  .prog-label{justify-content:flex-end}
+  .topbar-in{gap:8px;padding:8px 12px}
+  .menu-btn{padding:6px 9px;font-size:14px}
+  .tb-btn{padding:6px 10px}
+  .code pre{font-size:12.5px}
+}
+@media print{
+  .topbar,aside,.copy,.foot,.search{display:none!important}
+  .wrap{display:block}
+  body{background:#fff}
+  .step,.card,details.tr{box-shadow:none;break-inside:avoid}
+  details.tr{display:block}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="topbar-in">
+  <button class="menu-btn" id="menuBtn" aria-label="Mở mục lục">☰ Mục lục</button>
+  <div class="brand">Hadoop + Hive / Docker</div>
+  <div class="prog">
+    <div class="prog-label"><span class="pl">Tiến độ checkpoint</span><span id="progTxt">0 / 0</span></div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="barFill"></i></div>
+  </div>
+  <button class="tb-btn primary" id="nextBtn"><span class="long">Đến bước chưa xong</span><span class="short">Tiếp</span> →</button>
+  <button class="tb-btn hide-sm" id="resetBtn">Đặt lại</button>
+</div></div>
+
+<div class="wrap">
+<aside id="side"><h2>Mục lục</h2><a href="#p1" data-part="p1"><span class="ico">1</span>Chuẩn bị Docker<span class="cnt" data-part="p1"></span></a>
+<a href="#p2" data-part="p2"><span class="ico">2</span>Cài gói, tải Hadoop và Hive<span class="cnt" data-part="p2"></span></a>
+<a href="#p3" data-part="p3"><span class="ico">3</span>Biến môi trường và SSH<span class="cnt" data-part="p3"></span></a>
+<a href="#p4" data-part="p4"><span class="ico">4</span>Cấu hình Hadoop (đầy đủ)<span class="cnt" data-part="p4"></span></a>
+<a href="#p5" data-part="p5"><span class="ico">5</span>Format NameNode, khởi động, tạo thư mục HDFS<span class="cnt" data-part="p5"></span></a>
+<a href="#p6" data-part="p6"><span class="ico">6</span>Kiểm thử MapReduce thuần (cửa chặn trước khi sang Hive)<span class="cnt" data-part="p6"></span></a>
+<a href="#p7" data-part="p7"><span class="ico">7</span>Cấu hình Hive và Derby Metastore<span class="cnt" data-part="p7"></span></a>
+<a href="#p8" data-part="p8"><span class="ico">8</span>Script khởi động / dừng / chẩn đoán<span class="cnt" data-part="p8"></span></a>
+<a href="#p9" data-part="p9"><span class="ico">9</span>Kiểm thử Hive: MapReduce và ARRAY<span class="cnt" data-part="p9"></span></a>
+<a href="#p10" data-part="p10"><span class="ico">10</span>Kết nối IntelliJ IDEA từ Windows<span class="cnt" data-part="p10"></span></a>
+<a href="#p11"><span class="ico">11</span>Troubleshooting</a>
+<a href="#p12" data-part="p12"><span class="ico">12</span>Checklist hoàn thành<span class="cnt" data-part="p12"></span></a></aside>
+<main>
+<header class="page-head">
+<h1>Hướng dẫn cài đặt Hadoop và Hive trên Docker</h1>
+<div class="chips"><span class="chip">Ubuntu <b>22.04</b></span><span class="chip">Java <b>8</b></span><span class="chip">Hadoop <b>3.3.6</b></span><span class="chip">Hive <b>4.0.1</b></span><span class="chip">Engine <b>MapReduce / YARN</b></span><span class="chip">Metastore <b>Derby</b></span></div>
+<p class="sec-intro" style="margin-top:12px">Làm lần lượt từ Phần 1 đến Phần 10. Bấm <strong>Copy</strong> rồi dán vào terminal; khung xanh lá là kết quả cần thấy trước khi tick «Đã xong». Tiến độ được lưu trong trình duyệt.</p>
+</header>
+<section class="part" id="p1">
+<h2 class="sec" data-part="p1"><span class="badge">1</span>Chuẩn bị Docker</h2>
+<p class="sec-intro">Tạo một container Ubuntu duy nhất (<code>hadoop-master</code>) chạy chế độ pseudo-distributed: NameNode, DataNode, ResourceManager, NodeManager và HiveServer2 cùng nằm trong container này.</p>
+<section class="step" id="s-1a">
+<div class="step-head"><span class="num">1a</span><h3>Cấp đủ RAM cho Docker</h3><div class="tags"></div></div>
+<div class="step-body"><p>Job MapReduce cần tối thiểu ~3 GB cho YARN + ~1 GB cho HiveServer2 + các daemon HDFS. <strong>Docker nên có từ 6 GB RAM trở lên.</strong> Docker Desktop: Settings → Resources → Memory. Nếu dùng WSL2, tạo/sửa file <code>%UserProfile%\.wslconfig</code>:</p>
+<div class="code"><div class="code-bar"><span class="loc">File .wslconfig</span><button class="copy" type="button">Copy</button></div><pre><code>[wsl2]
+memory=8GB
+processors=4</code></pre></div>
+<div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>wsl --shutdown</code></pre></div>
+<p>Sau đó mở lại Docker Desktop.</p>
+<div class="note info"><b class="t">Ghi chú</b>Máy chỉ có 4–6 GB RAM: giảm <code>yarn.nodemanager.resource.memory-mb</code> xuống 2048 ở Phần 4 (giữ nguyên các giá trị còn lại).</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="1a" data-part="p1"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-1b">
+<div class="step-head"><span class="num">1b</span><h3>Tải image Ubuntu</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker pull ubuntu:22.04</code></pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="1b" data-part="p1"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-1c">
+<div class="step-head"><span class="num">1c</span><h3>Tạo container hadoop-master (có mở đủ cổng)</h3><div class="tags"><span class="tag once">Chạy 1 lần</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">PowerShell (dấu ` là xuống dòng; trên CMD/Linux dùng ^ hoặc \)</span><button class="copy" type="button">Copy</button></div><pre><code>docker run -it -d --name hadoop-master -h hadoop-master `
+  -p 10000:10000 -p 10002:10002 -p 9870:9870 -p 8088:8088 -p 19888:19888 `
+  ubuntu:22.04</code></pre></div>
+<p>Ý nghĩa cổng: <code>10000</code> HiveServer2 (JDBC/IntelliJ) · <code>10002</code> giao diện HiveServer2 · <code>9870</code> giao diện HDFS · <code>8088</code> giao diện YARN · <code>19888</code> JobHistory.</p>
+<div class="note warn"><b class="t">Lưu ý</b>Container đã tồn tại (báo <code>name is already in use</code>)? Đừng tạo lại — chạy <code>docker start hadoop-master</code>. Nếu container đã tạo trước đó thiếu <code>-p 10000:10000</code> thì xem mục Troubleshooting «IntelliJ không kết nối được».</div>
+<p>Hướng dẫn này chỉ dùng <strong>1 container</strong> (<code>hadoop-master</code>) chạy cả Hadoop lẫn Hive, không cần thêm node phụ.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="1c" data-part="p1"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-1d">
+<div class="step-head"><span class="num">1d</span><h3>Vào container</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker exec -it hadoop-master bash</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>root@hadoop-master:/#</pre></div>
+<div class="note ok"><b class="t">Đạt yêu cầu</b>Từ đây trở đi, mọi lệnh gõ <strong>trong container</strong> trừ khi khung code ghi «PowerShell».</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="1d" data-part="p1"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-1e">
+<div class="step-head"><span class="num">1e</span><h3>CHECKPOINT 1 — Container chạy, cổng đã ánh xạ</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker ps --filter name=hadoop-master
+docker port hadoop-master</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>hadoop-master ... Up ...
+10000/tcp -&gt; 0.0.0.0:10000
+9870/tcp  -&gt; 0.0.0.0:9870
+8088/tcp  -&gt; 0.0.0.0:8088</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="1e" data-part="p1"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p2">
+<h2 class="sec" data-part="p2"><span class="badge">2</span>Cài gói, tải Hadoop và Hive</h2>
+<p class="sec-intro">Dùng kho <code>archive.apache.org</code> vì <code>downloads.apache.org</code> chỉ giữ bản mới nhất — link Hadoop 3.3.6 trên <code>downloads.apache.org</code> có thể trả về 404.</p>
+<section class="step" id="s-2a">
+<div class="step-head"><span class="num">2a</span><h3>Cài Java 8 và công cụ cần thiết</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y openjdk-8-jdk ssh vim wget curl iproute2 procps libxml2-utils</code></pre></div>
+<p><code>iproute2</code> cho lệnh <code>ss</code>, <code>procps</code> cho <code>ps</code>/<code>pkill</code>, <code>libxml2-utils</code> cho <code>xmllint</code> (kiểm tra XML).</p>
+<div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>java -version</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>openjdk version "1.8.0_xxx"</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="2a" data-part="p2"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-2b">
+<div class="step-head"><span class="num">2b</span><h3>Tải và giải nén Hadoop 3.3.6</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cd /root
+wget -c https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+tar -xzf hadoop-3.3.6.tar.gz
+ls /root/hadoop-3.3.6/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar</code></pre></div>
+<div class="note info"><b class="t">Ghi chú</b>File ~700 MB, tải vài phút. Báo <code>gzip: unexpected end of file</code> khi giải nén = tải dở: <code>rm hadoop-3.3.6.tar.gz</code> rồi tải lại.</div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>/root/hadoop-3.3.6/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="2b" data-part="p2"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-2c">
+<div class="step-head"><span class="num">2c</span><h3>Tải và giải nén Hive 4.0.1</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cd /root
+wget -c https://archive.apache.org/dist/hive/hive-4.0.1/apache-hive-4.0.1-bin.tar.gz
+tar -xzf apache-hive-4.0.1-bin.tar.gz
+ls /root/apache-hive-4.0.1-bin/bin/schematool</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>/root/apache-hive-4.0.1-bin/bin/schematool</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="2c" data-part="p2"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-2d">
+<div class="step-head"><span class="num">2d</span><h3>CHECKPOINT 2 — Đã có Java, Hadoop, Hive</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>java -version 2&gt;&amp;1 | head -1
+ls -d /root/hadoop-3.3.6 /root/apache-hive-4.0.1-bin</code></pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="2d" data-part="p2"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p3">
+<h2 class="sec" data-part="p3"><span class="badge">3</span>Biến môi trường và SSH</h2>
+<p class="sec-intro">Đây là phần dễ hỏng ngầm nhất: file <code>~/.bashrc</code> mặc định của Ubuntu <strong>thoát ngay ở dòng đầu với shell không tương tác</strong>, nên <code>source ~/.bashrc</code> trong script (hoặc khi Hadoop SSH vào chính nó) không nạp được <code>HADOOP_HOME</code>, <code>JAVA_HOME</code>, <code>PATH</code>. Vì vậy ta tách biến ra file riêng và chèn vào <strong>dòng đầu</strong> của <code>.bashrc</code>.</p>
+<section class="step" id="s-3a">
+<div class="step-head"><span class="num">3a</span><h3>Tạo file biến môi trường dùng chung</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/hadoop-hive-env.sh &lt;&lt;'EOF'
+# ===== Biến môi trường dùng chung cho Hadoop + Hive =====
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export HADOOP_HOME=/root/hadoop-3.3.6
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export HADOOP_YARN_HOME=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export HIVE_HOME=/root/apache-hive-4.0.1-bin
+export HIVE_CONF_DIR=$HIVE_HOME/conf
+export PATH=$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$HIVE_HOME/bin:$PATH
+EOF</code></pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="3a" data-part="p3"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-3b">
+<div class="step-head"><span class="num">3b</span><h3>Gắn vào .bashrc (dòng 1) và nạp ngay</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>grep -q 'hadoop-hive-env.sh' /root/.bashrc || sed -i '1i source /root/hadoop-hive-env.sh' /root/.bashrc
+source /root/hadoop-hive-env.sh
+head -n 2 /root/.bashrc</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>source /root/hadoop-hive-env.sh</pre></div>
+<div class="note info"><b class="t">Ghi chú</b>Nếu <code>.bashrc</code> của bạn đã có sẵn dòng <code>export HADOOP_HOME...</code> ở cuối thì cứ giữ, không xung đột.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="3b" data-part="p3"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-3c">
+<div class="step-head"><span class="num">3c</span><h3>Cấu hình SSH không mật khẩu</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>service ssh start
+mkdir -p ~/.ssh &amp;&amp; chmod 700 ~/.ssh
+[ -f ~/.ssh/id_rsa ] || ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+grep -qf ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys 2&gt;/dev/null || cat ~/.ssh/id_rsa.pub &gt;&gt; ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+cat &gt; ~/.ssh/config &lt;&lt;'EOF'
+Host *
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  LogLevel ERROR
+EOF
+chmod 600 ~/.ssh/config</code></pre></div>
+<p>Hai dòng <code>StrictHostKeyChecking no</code> ngăn <code>start-dfs.sh</code> dừng lại hỏi «Are you sure you want to continue connecting?».</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="3c" data-part="p3"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-3d">
+<div class="step-head"><span class="num">3d</span><h3>CHECKPOINT 3 — Shell không tương tác thấy được biến</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>ssh localhost 'echo JAVA_HOME=$JAVA_HOME; which hdfs hive'
+ssh hadoop-master 'echo HADOOP_CONF_DIR=$HADOOP_CONF_DIR'
+hadoop version | head -n 1</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+/root/hadoop-3.3.6/bin/hdfs
+/root/apache-hive-4.0.1-bin/bin/hive
+HADOOP_CONF_DIR=/root/hadoop-3.3.6/etc/hadoop
+Hadoop 3.3.6</pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b>Nếu <code>JAVA_HOME=</code> rỗng hoặc <code>which</code> không in gì: quay lại 3b, kiểm tra <code>source ...</code> đúng là <strong>dòng 1</strong> của <code>/root/.bashrc</code>.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="3d" data-part="p3"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p4">
+<h2 class="sec" data-part="p4"><span class="badge">4</span>Cấu hình Hadoop (đầy đủ)</h2>
+<p class="sec-intro">Mỗi file được <strong>ghi đè hoàn toàn</strong> bằng <code>cat &gt; ... &lt;&lt;'EOF'</code> nên chạy lại bao nhiêu lần cũng không bị lặp thẻ. Phần quan trọng nhất để MapReduce khởi chạy được là <strong>classpath</strong> (4.4, 4.5) và <strong>bộ nhớ/đĩa YARN</strong> (4.5, 4.6).</p>
+<section class="step" id="s-4a">
+<div class="step-head"><span class="num">4a</span><h3>hadoop-env.sh — JAVA_HOME và user chạy daemon</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>F=/root/hadoop-3.3.6/etc/hadoop/hadoop-env.sh
+grep -q 'GUIDE-HADOOP-ENV' $F || cat &gt;&gt; $F &lt;&lt;'EOF'
+
+# ===== GUIDE-HADOOP-ENV =====
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
+EOF
+mkdir -p /root/hadoop-3.3.6/data/namenode /root/hadoop-3.3.6/data/datanode /root/hadoop-3.3.6/data/tmp
+tail -n 10 $F</code></pre></div>
+<p>Khối lệnh có dấu hiệu <code>GUIDE-HADOOP-ENV</code> nên không bị append lặp.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4a" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-4b">
+<div class="step-head"><span class="num">4b</span><h3>core-site.xml</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/hadoop-3.3.6/etc/hadoop/core-site.xml &lt;&lt;'EOF'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;property&gt;
+    &lt;name&gt;fs.defaultFS&lt;/name&gt;
+    &lt;value&gt;hdfs://hadoop-master:9000&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hadoop.tmp.dir&lt;/name&gt;
+    &lt;value&gt;/root/hadoop-3.3.6/data/tmp&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hadoop.http.staticuser.user&lt;/name&gt;
+    &lt;value&gt;root&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hadoop.proxyuser.root.hosts&lt;/name&gt;
+    &lt;value&gt;*&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hadoop.proxyuser.root.groups&lt;/name&gt;
+    &lt;value&gt;*&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+EOF</code></pre></div>
+<p><code>hadoop.tmp.dir</code> trỏ ra thư mục riêng, không nằm trong <code>/tmp</code> (hay bị dọn).</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4b" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-4c">
+<div class="step-head"><span class="num">4c</span><h3>hdfs-site.xml</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/hadoop-3.3.6/etc/hadoop/hdfs-site.xml &lt;&lt;'EOF'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;property&gt;
+    &lt;name&gt;dfs.replication&lt;/name&gt;
+    &lt;value&gt;1&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;dfs.namenode.name.dir&lt;/name&gt;
+    &lt;value&gt;file:///root/hadoop-3.3.6/data/namenode&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;dfs.datanode.data.dir&lt;/name&gt;
+    &lt;value&gt;file:///root/hadoop-3.3.6/data/datanode&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;dfs.permissions.enabled&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+EOF</code></pre></div>
+<p><code>dfs.permissions.enabled=false</code> loại bỏ cả một nhóm lỗi «Permission denied» khi Hive/YARN ghi thư mục tạm — phù hợp môi trường thực hành.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4c" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-4d">
+<div class="step-head"><span class="num">4d</span><h3>mapred-site.xml — chỗ lỗi MapReduce thường bắt đầu</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/hadoop-3.3.6/etc/hadoop/mapred-site.xml &lt;&lt;'EOF'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.framework.name&lt;/name&gt;
+    &lt;value&gt;yarn&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.application.classpath&lt;/name&gt;
+    &lt;value&gt;/root/hadoop-3.3.6/share/hadoop/mapreduce/*:/root/hadoop-3.3.6/share/hadoop/mapreduce/lib/*&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.app.mapreduce.am.env&lt;/name&gt;
+    &lt;value&gt;HADOOP_MAPRED_HOME=/root/hadoop-3.3.6&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.map.env&lt;/name&gt;
+    &lt;value&gt;HADOOP_MAPRED_HOME=/root/hadoop-3.3.6&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.reduce.env&lt;/name&gt;
+    &lt;value&gt;HADOOP_MAPRED_HOME=/root/hadoop-3.3.6&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.app.mapreduce.am.resource.mb&lt;/name&gt;
+    &lt;value&gt;1024&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.app.mapreduce.am.command-opts&lt;/name&gt;
+    &lt;value&gt;-Xmx768m&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.map.memory.mb&lt;/name&gt;
+    &lt;value&gt;1024&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.map.java.opts&lt;/name&gt;
+    &lt;value&gt;-Xmx768m&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.reduce.memory.mb&lt;/name&gt;
+    &lt;value&gt;1024&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.reduce.java.opts&lt;/name&gt;
+    &lt;value&gt;-Xmx768m&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+EOF</code></pre></div>
+<div class="note warn"><b class="t">Lưu ý</b>Chỉ đặt <code>HADOOP_MAPRED_HOME</code> mà thiếu <strong><code>mapreduce.application.classpath</code></strong> là chưa đủ. Khi đó container ApplicationMaster không tìm thấy <code>MRAppMaster</code> và job chết trước khi có Mapper: <em>«Could not find or load main class org.apache.hadoop.mapreduce.v2.app.MRAppMaster»</em>. Cặp <code>-Xmx768m</code> luôn phải nhỏ hơn <code>memory.mb</code> (1024).</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4d" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-4e">
+<div class="step-head"><span class="num">4e</span><h3>yarn-site.xml — classpath, bộ nhớ, kiểm tra đĩa</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/hadoop-3.3.6/etc/hadoop/yarn-site.xml &lt;&lt;'EOF'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.resourcemanager.hostname&lt;/name&gt;
+    &lt;value&gt;hadoop-master&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.aux-services&lt;/name&gt;
+    &lt;value&gt;mapreduce_shuffle&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.env-whitelist&lt;/name&gt;
+    &lt;value&gt;JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,HADOOP_MAPRED_HOME,PATH,LANG,TZ&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.application.classpath&lt;/name&gt;
+    &lt;value&gt;/root/hadoop-3.3.6/etc/hadoop,/root/hadoop-3.3.6/share/hadoop/common/*,/root/hadoop-3.3.6/share/hadoop/common/lib/*,/root/hadoop-3.3.6/share/hadoop/hdfs/*,/root/hadoop-3.3.6/share/hadoop/hdfs/lib/*,/root/hadoop-3.3.6/share/hadoop/mapreduce/*,/root/hadoop-3.3.6/share/hadoop/mapreduce/lib/*,/root/hadoop-3.3.6/share/hadoop/yarn/*,/root/hadoop-3.3.6/share/hadoop/yarn/lib/*&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.resource.memory-mb&lt;/name&gt;
+    &lt;value&gt;3072&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.resource.cpu-vcores&lt;/name&gt;
+    &lt;value&gt;4&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.scheduler.minimum-allocation-mb&lt;/name&gt;
+    &lt;value&gt;512&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.scheduler.maximum-allocation-mb&lt;/name&gt;
+    &lt;value&gt;3072&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.vmem-check-enabled&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.nodemanager.disk-health-checker.max-disk-utilization-per-disk-percentage&lt;/name&gt;
+    &lt;value&gt;99&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;yarn.log-aggregation-enable&lt;/name&gt;
+    &lt;value&gt;true&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+EOF</code></pre></div>
+<p>Những điểm cần chú ý:</p>
+<p>• <code>yarn.application.classpath</code> + <code>env-whitelist</code>: cho container thấy thư viện Hadoop và <code>HADOOP_MAPRED_HOME</code>.<br>• <code>vmem-check-enabled=false</code>: tránh YARN kill container vì «virtual memory» (rất hay xảy ra trong Docker/Java 8).<br>• <code>max-disk-utilization...=99</code>: mặc định 90% — đĩa Docker đầy hơn mức này thì NodeManager bị đánh dấu <em>UNHEALTHY</em> («local-dirs are bad») và không cấp container nào.<br>• Bộ nhớ 3072 MB ≥ AM (1024) + 2 task (1024 mỗi cái).</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4e" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-4f">
+<div class="step-head"><span class="num">4f</span><h3>capacity-scheduler.xml — cho phép ApplicationMaster chạy</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>F=/root/hadoop-3.3.6/etc/hadoop/capacity-scheduler.xml
+sed -i '/yarn.scheduler.capacity.maximum-am-resource-percent/{n;s#&lt;value&gt;[^&lt;]*&lt;/value&gt;#&lt;value&gt;0.8&lt;/value&gt;#}' $F
+grep -A1 'maximum-am-resource-percent' $F</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>  &lt;name&gt;yarn.scheduler.capacity.maximum-am-resource-percent&lt;/name&gt;
+  &lt;value&gt;0.8&lt;/value&gt;</pre></div>
+<p>Mặc định chỉ 10% tài nguyên cho AM; với 1 NodeManager nhỏ, job có thể kẹt vĩnh viễn ở trạng thái <code>ACCEPTED</code>.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4f" data-part="p4"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-4g">
+<div class="step-head"><span class="num">4g</span><h3>CHECKPOINT 4 — Tất cả file XML hợp lệ</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cd /root/hadoop-3.3.6/etc/hadoop
+for f in core-site.xml hdfs-site.xml mapred-site.xml yarn-site.xml capacity-scheduler.xml; do
+  xmllint --noout $f &amp;&amp; echo "OK  $f"
+done
+echo "--- classpath MapReduce sẽ dùng:"
+xmllint --xpath "//property[name='mapreduce.application.classpath']/value/text()" mapred-site.xml; echo</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>OK  core-site.xml
+OK  hdfs-site.xml
+OK  mapred-site.xml
+OK  yarn-site.xml
+OK  capacity-scheduler.xml
+--- classpath MapReduce sẽ dùng:
+/root/hadoop-3.3.6/share/hadoop/mapreduce/*:/root/hadoop-3.3.6/share/hadoop/mapreduce/lib/*</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="4g" data-part="p4"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p5">
+<h2 class="sec" data-part="p5"><span class="badge">5</span>Format NameNode, khởi động, tạo thư mục HDFS</h2>
+<p class="sec-intro">Bước format có kiểm tra sẵn: nếu NameNode đã có dữ liệu thì tự bỏ qua, tránh mất HDFS cũ.</p>
+<section class="step" id="s-5a">
+<div class="step-head"><span class="num">5a</span><h3>Format NameNode (chỉ lần đầu — tự bỏ qua nếu đã format)</h3><div class="tags"><span class="tag once">Chạy 1 lần</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>if [ -d /root/hadoop-3.3.6/data/namenode/current ]; then
+  echo "&gt;&gt;&gt; NameNode đã format trước đó - BỎ QUA"
+else
+  hdfs namenode -format -force -nonInteractive
+fi</code></pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b>Không tự ý chạy <code>hdfs namenode -format</code> trên cụm đã có dữ liệu. Nếu buộc phải format lại, hãy xóa luôn <code>data/datanode</code> (xem Troubleshooting «DataNode không lên»).</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="5a" data-part="p5"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-5b">
+<div class="step-head"><span class="num">5b</span><h3>Khởi động lại HDFS và YARN (dùng cả khi vừa sửa cấu hình)</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>pkill -f '[H]iveServer2' 2&gt;/dev/null     # HiveServer2 giữ cấu hình cũ trong bộ nhớ nên phải tắt
+service ssh start
+stop-yarn.sh 2&gt;/dev/null; stop-dfs.sh 2&gt;/dev/null   # an toàn nếu chưa chạy
+start-dfs.sh
+start-yarn.sh
+jps</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>NameNode
+DataNode
+SecondaryNameNode
+ResourceManager
+NodeManager
+Jps</pre></div>
+<div class="note info"><b class="t">Ghi chú</b>Các tiến trình có thể in thêm vài dòng cảnh báo <code>WARNING: ...</code> — bỏ qua. Mỗi tiến trình trong 5 tiến trình trên phải xuất hiện.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="5b" data-part="p5"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-5c">
+<div class="step-head"><span class="num">5c</span><h3>Đợi HDFS ra khỏi safe mode, kiểm tra DataNode và NodeManager</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>hdfs dfsadmin -safemode wait
+hdfs dfsadmin -report | grep 'Live datanodes'
+yarn node -list</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>Safe mode is OFF
+Live datanodes (1):
+Total Nodes:1
+  hadoop-master:xxxxx   RUNNING   hadoop-master:8042   0</pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b><code>yarn node -list</code> báo <code>Total Nodes:0</code> hoặc node ở trạng thái <code>UNHEALTHY</code> = job sẽ không bao giờ chạy. Xem Troubleshooting trước khi đi tiếp.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="5c" data-part="p5"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-5d">
+<div class="step-head"><span class="num">5d</span><h3>Tạo thư mục HDFS cho YARN và Hive</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>hdfs dfs -mkdir -p /tmp/hive /tmp/hadoop-yarn/staging /user/root /user/hive/warehouse /user/hive/external
+hdfs dfs -chmod -R 777 /tmp /user/hive
+hdfs dfs -ls /
+hdfs dfs -ls /user/hive</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>drwxrwxrwx  - root supergroup  ... /tmp
+drwxrwxrwx  - root supergroup  ... /user/hive/external
+drwxrwxrwx  - root supergroup  ... /user/hive/warehouse</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="5d" data-part="p5"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-5e">
+<div class="step-head"><span class="num">5e</span><h3>CHECKPOINT 5 — HDFS ghi/đọc được, YARN có node RUNNING</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>echo hello &gt; /root/hello.txt
+hdfs dfs -put -f /root/hello.txt /tmp/hello.txt
+hdfs dfs -cat /tmp/hello.txt
+yarn node -list | grep -E 'Total Nodes|RUNNING'</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>hello
+Total Nodes:1
+...RUNNING...</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="5e" data-part="p5"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p6">
+<h2 class="sec" data-part="p6"><span class="badge">6</span>Kiểm thử MapReduce thuần (cửa chặn trước khi sang Hive)</h2>
+<p class="sec-intro"><strong>Không sang Phần 7 nếu bước này chưa pass.</strong> Job mẫu <code>pi</code> chạy hoàn toàn bằng Hadoop, không có Hive, nên cô lập được lỗi YARN/classpath khỏi lỗi Hive.</p>
+<section class="step key" id="s-6a">
+<div class="step-head"><span class="num">6a</span><h3>Chạy job tính số Pi</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar pi 2 10</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>Number of Maps  = 2
+...
+running in uber mode : false
+ map 0% reduce 0%
+ map 100% reduce 0%
+ map 100% reduce 100%
+Job ... completed successfully
+Job Finished in 25.3 seconds
+Estimated value of Pi is 3.80000000000000000000</pre></div>
+<div class="note ok"><b class="t">Đạt yêu cầu</b>Thấy <code>completed successfully</code> và dòng <code>Estimated value of Pi</code> = MRAppMaster, Mapper, Reducer, shuffle đều hoạt động.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="6a" data-part="p6"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-6b">
+<div class="step-head"><span class="num">6b</span><h3>Nếu job thất bại hoặc đứng yên — lấy nguyên nhân</h3><div class="tags"><span class="tag onerror">Chỉ khi lỗi</span></div></div>
+<div class="step-body"><p>Chạy khối lệnh sau, rồi đối chiếu thông báo với bảng ở Phần 11:</p>
+<div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>APP=$(yarn application -list -appStates ALL 2&gt;/dev/null | awk '/application_/{print $1}' | sort -r | head -1)
+echo "Ứng dụng gần nhất: $APP"
+yarn application -status $APP | grep -E 'State|Diagnostics'
+head -n 40 /root/hadoop-3.3.6/logs/userlogs/$APP/container_*_000001/stderr</code></pre></div>
+<div class="note info"><b class="t">Ghi chú</b>Job đứng mãi ở <code>map 0% reduce 0%</code> và <code>yarn application -status</code> báo <code>ACCEPTED</code>: NodeManager chưa đăng ký hoặc thiếu RAM — chạy <code>yarn node -list -all</code>.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="6b" data-part="p6"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-6c">
+<div class="step-head"><span class="num">6c</span><h3>Kiểm tra classpath và Protobuf TRƯỚC khi chạy Hive (chỉ đọc, không sửa)</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>jar tf /root/hadoop-3.3.6/share/hadoop/mapreduce/hadoop-mapreduce-client-app-3.3.6.jar | grep -q 'v2/app/MRAppMaster.class' \
+  &amp;&amp; echo "OK  lớp MRAppMaster có trong hadoop-mapreduce-client-app-3.3.6.jar" || echo "LỖI thiếu MRAppMaster - tải/giải nén lại Hadoop"
+hadoop classpath | tr ':' '\n' | grep -qx "/root/hadoop-3.3.6/etc/hadoop" \
+  &amp;&amp; echo "OK  HADOOP_CONF_DIR nằm trong classpath" || echo "LỖI classpath không có thư mục cấu hình"
+echo "--- Protobuf Hadoop (chỉ xem):"; ls /root/hadoop-3.3.6/share/hadoop/common/lib /root/hadoop-3.3.6/share/hadoop/hdfs/lib 2&gt;/dev/null | grep -i protobuf
+echo "--- Protobuf Hive (chỉ xem):"; ls /root/apache-hive-4.0.1-bin/lib 2&gt;/dev/null | grep -i protobuf || echo "(Hive chưa cài hoặc không có)"
+</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>OK  lớp MRAppMaster có trong hadoop-mapreduce-client-app-3.3.6.jar
+OK  HADOOP_CONF_DIR nằm trong classpath
+--- Protobuf Hadoop (chỉ xem):
+hadoop-shaded-protobuf_3_7-1.1.1.jar
+protobuf-java-2.5.0.jar
+(mỗi file hiện 2 lần vì nằm ở 2 thư mục lib)
+--- Protobuf Hive (chỉ xem):
+grpc-protobuf-1.51.0.jar
+grpc-protobuf-lite-1.51.0.jar
+protobuf-java-3.24.4.jar  (chỉ có sau khi giải nén Hive, Phần 2c)</pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b><strong>Không tự chép đè, xóa hay thay jar Protobuf</strong> (của Hadoop lẫn Hive) — Hadoop 3.3.6 và Hive 4.0.1 mang phiên bản Protobuf riêng, được build để chạy cùng nhau. Hadoop mang <code>protobuf-java-2.5.0</code> còn Hive mang <code>3.24.4</code> là <strong>bình thường</strong>. Xung đột giữa hai bản này (lỗi <code>NoSuchMethodError ... Internal.checkNotNull</code> khi ghi ORC) được xử lý bằng cấu hình ở Phần 7b, <strong>không</strong> bằng cách sửa jar.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="6c" data-part="p6"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-6d">
+<div class="step-head"><span class="num">6d</span><h3>CHECKPOINT 6 — MapReduce chạy xong thành công</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>yarn application -list -appStates FINISHED | tail -n 3</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>application_... QuasiMonteCarlo MAPREDUCE root default FINISHED SUCCEEDED 100%</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="6d" data-part="p6"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p7">
+<h2 class="sec" data-part="p7"><span class="badge">7</span>Cấu hình Hive và Derby Metastore</h2>
+<p class="sec-intro">Điểm sửa chính: ép <code>hive.execution.engine=mr</code> (Hive 4 mặc định là Tez, mà môi trường này không cài Tez), đặt đường dẫn Derby <strong>tuyệt đối</strong>, và báo cho Hive biết <code>HADOOP_CONF_DIR</code>.</p>
+<section class="step" id="s-7a">
+<div class="step-head"><span class="num">7a</span><h3>hive-env.sh — cho Hive thấy cấu hình YARN</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/apache-hive-4.0.1-bin/conf/hive-env.sh &lt;&lt;'EOF'
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export HADOOP_HOME=/root/hadoop-3.3.6
+export HADOOP_CONF_DIR=/root/hadoop-3.3.6/etc/hadoop
+export HIVE_CONF_DIR=/root/apache-hive-4.0.1-bin/conf
+export HADOOP_HEAPSIZE=1024
+EOF</code></pre></div>
+<p>Nếu HiveServer2 không đọc được <code>mapred-site.xml</code>/<code>yarn-site.xml</code>, nó sẽ gửi job tới ResourceManager sai hoặc dùng sai classpath.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="7a" data-part="p7"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-7b">
+<div class="step-head"><span class="num">7b</span><h3>hive-site.xml (ghi đè hoàn toàn)</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/apache-hive-4.0.1-bin/conf/hive-site.xml &lt;&lt;'EOF'
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.execution.engine&lt;/name&gt;
+    &lt;value&gt;mr&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;javax.jdo.option.ConnectionURL&lt;/name&gt;
+    &lt;value&gt;jdbc:derby:;databaseName=/root/metastore_db;create=true&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;javax.jdo.option.ConnectionDriverName&lt;/name&gt;
+    &lt;value&gt;org.apache.derby.jdbc.EmbeddedDriver&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.metastore.warehouse.dir&lt;/name&gt;
+    &lt;value&gt;/user/hive/warehouse&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.metastore.warehouse.external.dir&lt;/name&gt;
+    &lt;value&gt;/user/hive/external&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.exec.scratchdir&lt;/name&gt;
+    &lt;value&gt;/tmp/hive&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.server2.thrift.port&lt;/name&gt;
+    &lt;value&gt;10000&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.server2.thrift.bind.host&lt;/name&gt;
+    &lt;value&gt;0.0.0.0&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.server2.authentication&lt;/name&gt;
+    &lt;value&gt;NONE&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.server2.enable.doAs&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.auto.convert.join&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.vectorized.execution.enabled&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.exec.mode.local.auto&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.stats.autogather&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.metastore.event.db.notification.api.auth&lt;/name&gt;
+    &lt;value&gt;false&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;mapreduce.job.user.classpath.first&lt;/name&gt;
+    &lt;value&gt;true&lt;/value&gt;
+  &lt;/property&gt;
+  &lt;property&gt;
+    &lt;name&gt;hive.aux.jars.path&lt;/name&gt;
+    &lt;value&gt;file:///root/apache-hive-4.0.1-bin/lib/protobuf-java-3.24.4.jar&lt;/value&gt;
+  &lt;/property&gt;
+&lt;/configuration&gt;
+EOF</code></pre></div>
+<p>Giải thích các dòng quan trọng:</p>
+<p>• <code>hive.execution.engine=mr</code>: chạy bằng MapReduce, không đòi Tez.<br>• <code>databaseName=/root/metastore_db</code>: <strong>đường dẫn tuyệt đối</strong> nên khởi động HiveServer2 từ thư mục nào cũng thấy cùng một Metastore (thư mục <code>/root/metastore_db</code>).<br>• <code>hive.auto.convert.join=false</code>: tắt map-join tự động vì nó sinh thêm tác vụ cục bộ <code>MapredLocalTask</code> (JVM con) — một nguồn lỗi «return code 1/2» ngay lúc khởi chạy.<br>• <code>hive.vectorized.execution.enabled=false</code>, <code>hive.exec.mode.local.auto=false</code>, <code>hive.stats.autogather=false</code>: bỏ các nhánh dễ lỗi khi chạy MR đơn node.<br>• <strong><code>hive.aux.jars.path</code> + <code>mapreduce.job.user.classpath.first=true</code>: sửa xung đột Protobuf.</strong> Reducer ghi bảng ORC dùng Protobuf 3.x, nhưng classpath của Hadoop có <code>protobuf-java-2.5.0</code> đứng trước nên job chết với <code>NoSuchMethodError: com.google.protobuf.Internal.checkNotNull</code>. Hai dòng này đưa jar Protobuf 3.24.4 của Hive vào job và cho nó ưu tiên nạp trước. <strong>Không cần chép đè, xóa hay thay jar nào.</strong> Đã kiểm chứng trên cụm thật: <code>INSERT OVERWRITE ... STORED AS ORC</code> với <code>collect_list</code> chạy xong.</p>
+<div class="note warn"><b class="t">Lưu ý</b>Tên jar <code>protobuf-java-3.24.4.jar</code> đúng với Hive 4.0.1. Nếu bạn dùng bản Hive khác, kiểm tra tên thật bằng <code>ls $HIVE_HOME/lib | grep protobuf-java</code> rồi sửa lại giá trị <code>hive.aux.jars.path</code>.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="7b" data-part="p7"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-7c">
+<div class="step-head"><span class="num">7c</span><h3>Kiểm tra hive-site.xml hợp lệ</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>xmllint --noout /root/apache-hive-4.0.1-bin/conf/hive-site.xml &amp;&amp; echo "OK  hive-site.xml"
+grep -c '&lt;property&gt;' /root/apache-hive-4.0.1-bin/conf/hive-site.xml
+ls /root/apache-hive-4.0.1-bin/lib/protobuf-java-3.24.4.jar</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>OK  hive-site.xml
+17
+/root/apache-hive-4.0.1-bin/lib/protobuf-java-3.24.4.jar</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="7c" data-part="p7"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-7d">
+<div class="step-head"><span class="num">7d</span><h3>Khởi tạo / kiểm tra Derby Metastore</h3><div class="tags"><span class="tag once">Chạy 1 lần</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>pkill -f '[H]iveServer2' 2&gt;/dev/null; sleep 2     # Derby embedded chỉ cho 1 tiến trình mở
+cd /root
+if [ -d /root/metastore_db ]; then
+  echo "&gt;&gt;&gt; metastore_db đã có - KHÔNG initSchema, chỉ kiểm tra:"
+  schematool -dbType derby -info
+else
+  schematool -dbType derby -initSchema
+  schematool -dbType derby -info
+fi</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>Metastore connection URL:  jdbc:derby:;databaseName=/root/metastore_db;create=true
+Metastore Connection Driver : org.apache.derby.jdbc.EmbeddedDriver
+Hive distribution version:  4.0.0
+Metastore schema version:   4.0.0
+schemaTool completed</pre></div>
+<div class="note warn"><b class="t">Lưu ý</b>Derby Embedded chỉ cho <strong>một</strong> tiến trình mở <code>metastore_db</code>. Đừng chạy <code>schematool</code> khi HiveServer2 đang chạy (lệnh trên đã tắt HiveServer2 trước).</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="7d" data-part="p7"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-7e">
+<div class="step-head"><span class="num">7e</span><h3>CHECKPOINT 7 — Schema Metastore 4.0.0</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><p>Đã hiện <code>Metastore schema version: 4.0.0</code> và <code>schemaTool completed</code> ở bước 7d.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="7e" data-part="p7"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p8">
+<h2 class="sec" data-part="p8"><span class="badge">8</span>Script khởi động / dừng / chẩn đoán</h2>
+<p class="sec-intro">Ba script dùng lại hằng ngày. Script nạp biến trực tiếp từ <code>/root/hadoop-hive-env.sh</code> nên chạy được cả bằng <code>docker exec</code> (shell không tương tác).</p>
+<section class="step" id="s-8a">
+<div class="step-head"><span class="num">8a</span><h3>Tạo start-all.sh</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/start-all.sh &lt;&lt;'EOF'
+#!/bin/bash
+# Khởi động toàn bộ: SSH -&gt; HDFS -&gt; YARN -&gt; HiveServer2
+source /root/hadoop-hive-env.sh
+
+service ssh start
+start-dfs.sh
+start-yarn.sh
+hdfs dfsadmin -safemode wait
+
+echo "Đợi NodeManager đăng ký với ResourceManager..."
+for i in $(seq 1 30); do
+  yarn node -list 2&gt;/dev/null | grep -q RUNNING &amp;&amp; break
+  sleep 2
+done
+yarn node -list 2&gt;/dev/null | grep -E 'Total Nodes|RUNNING'
+
+pkill -f '[H]iveServer2' 2&gt;/dev/null
+sleep 2
+cd /root
+nohup hive --service hiveserver2 &gt; /root/hiveserver2.log 2&gt;&amp;1 &amp;
+
+echo "Đợi HiveServer2 mở cổng 10000 (tối đa 3 phút)..."
+for i in $(seq 1 60); do
+  ss -lnt | grep -q ':10000 ' &amp;&amp; break
+  sleep 3
+done
+if ss -lnt | grep -q ':10000 '; then
+  echo "&gt;&gt;&gt; HiveServer2 SẴN SÀNG ở cổng 10000"
+else
+  echo "&gt;&gt;&gt; HiveServer2 CHƯA lên. 40 dòng log cuối:"
+  tail -n 40 /root/hiveserver2.log
+fi
+jps
+EOF
+chmod +x /root/start-all.sh</code></pre></div>
+<p>Script này: không phụ thuộc <code>source ~/.bashrc</code>; đợi NodeManager đăng ký; có giới hạn thời gian chờ và tự in log khi HiveServer2 không lên (không chờ vô hạn).</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="8a" data-part="p8"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-8b">
+<div class="step-head"><span class="num">8b</span><h3>Tạo stop-all.sh và diag.sh</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/stop-all.sh &lt;&lt;'EOF'
+#!/bin/bash
+source /root/hadoop-hive-env.sh
+pkill -f '[H]iveServer2' 2&gt;/dev/null
+sleep 3
+stop-yarn.sh
+stop-dfs.sh
+jps
+EOF
+chmod +x /root/stop-all.sh</code></pre></div>
+<div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/diag.sh &lt;&lt;'EOF'
+#!/bin/bash
+# Gom thông tin chẩn đoán khi MapReduce/Hive lỗi
+source /root/hadoop-hive-env.sh
+echo "===== 1. Tiến trình Java ====="; jps
+echo; echo "===== 2. NodeManager (phải có 1 dòng RUNNING) ====="; yarn node -list -all 2&gt;/dev/null
+echo; echo "===== 3. Ứng dụng YARN gần nhất ====="
+yarn application -list -appStates ALL 2&gt;/dev/null | tail -n 6
+APP=$(yarn application -list -appStates ALL 2&gt;/dev/null | awk '/application_/{print $1}' | sort -r | head -1)
+if [ -n "$APP" ]; then
+  echo; echo "===== 4. Chẩn đoán $APP ====="
+  yarn application -status $APP 2&gt;/dev/null | grep -E 'State|Diagnostics|Final'
+  echo "--- stderr của ApplicationMaster:"
+  head -n 40 /root/hadoop-3.3.6/logs/userlogs/$APP/container_*_000001/stderr 2&gt;/dev/null
+fi
+echo; echo "===== 5. Đĩa và RAM ====="; df -h / | tail -n 1; free -m | head -n 2
+echo; echo "===== 6. Lỗi trong log HiveServer2 ====="
+grep -iE 'error|exception|return code|could not' /root/hiveserver2.log 2&gt;/dev/null | tail -n 15
+echo; echo "===== 7. Hive đang dùng engine nào? ====="
+grep -A1 -E 'hive.execution.engine' /root/apache-hive-4.0.1-bin/conf/hive-site.xml | tr -d ' '
+EOF
+chmod +x /root/diag.sh</code></pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="8b" data-part="p8"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-8c">
+<div class="step-head"><span class="num">8c</span><h3>Chạy start-all.sh</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>/root/start-all.sh</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>...
+Total Nodes:1
+ hadoop-master:xxxxx   RUNNING ...
+&gt;&gt;&gt; HiveServer2 SẴN SÀNG ở cổng 10000
+xxxx NameNode
+xxxx DataNode
+xxxx SecondaryNameNode
+xxxx ResourceManager
+xxxx NodeManager
+xxxx RunJar        &lt;- đây là HiveServer2
+xxxx Jps</pre></div>
+<p>Lần sau, từ Windows chỉ cần:</p>
+<div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker start hadoop-master
+docker exec hadoop-master bash /root/start-all.sh</code></pre></div>
+<div class="note info"><b class="t">Ghi chú</b>Mỗi lần container bị dừng/khởi động lại, mọi dịch vụ đều tắt — luôn chạy lại <code>start-all.sh</code>. Dữ liệu HDFS và Metastore vẫn còn.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="8c" data-part="p8"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-8d">
+<div class="step-head"><span class="num">8d</span><h3>CHECKPOINT 8 — HiveServer2 lắng nghe cổng 10000</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>ss -lntp | grep 10000
+ps -ef | grep '[H]iveServer2' | wc -l</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>LISTEN 0 50 *:10000 *:* users:(("java",pid=xxxx,fd=xxx))
+1</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="8d" data-part="p8"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p9">
+<h2 class="sec" data-part="p9"><span class="badge">9</span>Kiểm thử Hive: MapReduce và ARRAY</h2>
+<p class="sec-intro">Ba bài test tăng dần: (1) Hive có thấy cấu hình MR không, (2) một truy vấn <code>GROUP BY</code> thật sự sinh job MapReduce, (3) truy vấn với kiểu <code>ARRAY</code>.</p>
+<section class="step" id="s-9a">
+<div class="step-head"><span class="num">9a</span><h3>Xác nhận HiveServer2 đang dùng engine mr + yarn</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>beeline -u jdbc:hive2://localhost:10000/default -n root -e "SET hive.execution.engine; SET mapreduce.framework.name;"</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>| hive.execution.engine=mr |
+| mapreduce.framework.name=yarn |</pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b>Thấy <code>tez</code> hoặc <code>local</code>? HiveServer2 chưa đọc đúng cấu hình: chạy lại <code>/root/stop-all.sh</code> rồi <code>/root/start-all.sh</code>, kiểm tra Phần 7b.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9a" data-part="p9"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-9b">
+<div class="step-head"><span class="num">9b</span><h3>Truy vấn GROUP BY (sinh Job 1 thật)</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/test_mr.sql &lt;&lt;'EOF'
+CREATE DATABASE IF NOT EXISTS lab;
+USE lab;
+DROP TABLE IF EXISTS t_num;
+CREATE TABLE t_num (id INT, grp STRING);
+INSERT INTO t_num VALUES (1,'a'),(2,'a'),(3,'b');
+SELECT grp, COUNT(*) AS cnt FROM t_num GROUP BY grp;
+EOF
+beeline -u jdbc:hive2://localhost:10000/default -n root -f /root/test_mr.sql</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>Total jobs = 1
+Launching Job 1 out of 1
+...number of mappers: 1; number of reducers: 1
+| grp  | cnt  |
+| a    | 2    |
+| b    | 1    |</pre></div>
+<div class="note ok"><b class="t">Đạt yêu cầu</b>Có bảng kết quả <code>a=2, b=1</code> = Job 1 đã khởi chạy và hoàn tất.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9b" data-part="p9"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-9c">
+<div class="step-head"><span class="num">9c</span><h3>Truy vấn với kiểu ARRAY</h3><div class="tags"><span class="tag rerun">Chạy lại được</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/test_array.sql &lt;&lt;'EOF'
+USE lab;
+DROP TABLE IF EXISTS t_array;
+CREATE TABLE t_array (id INT, tags ARRAY&lt;STRING&gt;);
+INSERT INTO t_array SELECT 1, array('hadoop','hive','yarn');
+INSERT INTO t_array SELECT 2, array('hive','docker');
+SELECT id, size(tags) AS so_tag FROM t_array;
+SELECT tag, COUNT(*) AS cnt FROM t_array LATERAL VIEW explode(tags) x AS tag GROUP BY tag;
+EOF
+beeline -u jdbc:hive2://localhost:10000/default -n root -f /root/test_array.sql</code></pre></div>
+<p>Lưu ý: <code>INSERT ... VALUES</code> <strong>không</strong> hỗ trợ kiểu phức tạp trong Hive, nên dùng <code>INSERT ... SELECT array(...)</code>.</p>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>| id | so_tag |
+| 1  | 3      |
+| 2  | 2      |
+
+| tag     | cnt |
+| docker  | 1   |
+| hadoop  | 1   |
+| hive    | 2   |
+| yarn    | 1   |</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9c" data-part="p9"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step key" id="s-9d">
+<div class="step-head"><span class="num">9d</span><h3>Ghi bảng ORC với collect_list (kiểm tra xung đột Protobuf)</h3><div class="tags"><span class="tag rerun">Chạy lại được</span><span class="tag key">Quan trọng</span></div></div>
+<div class="step-body"><p>Truy vấn này có reducer ghi file ORC. Nếu Protobuf chưa được cấu hình đúng (Phần 7b), nó chết với <code>NoSuchMethodError: com.google.protobuf.Internal.checkNotNull</code> dù các truy vấn trước đều chạy tốt.</p>
+<div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cat &gt; /root/test_orc.sql &lt;&lt;'EOF'
+USE lab;
+DROP TABLE IF EXISTS t_orc;
+CREATE TABLE t_orc (grp STRING, vals ARRAY&lt;STRING&gt;) STORED AS ORC;
+INSERT OVERWRITE TABLE t_orc SELECT grp, collect_list(CAST(id AS STRING)) FROM t_num GROUP BY grp;
+SELECT * FROM t_orc;
+EOF
+beeline -u jdbc:hive2://localhost:10000/default -n root -f /root/test_orc.sql</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>| t_orc.grp | t_orc.vals |
+| a         | ["1","2"] |
+| b         | ["3"]     |</pre></div>
+<div class="note danger"><b class="t">Cảnh báo</b>Thấy <code>return code 2</code> hoặc <code>checkNotNull</code>? Xem Phần 11, mục «NoSuchMethodError ... Internal.checkNotNull». <strong>Không thay jar Protobuf.</strong></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9d" data-part="p9"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-9e">
+<div class="step-head"><span class="num">9e</span><h3>Nếu Job 1 vẫn thất bại</h3><div class="tags"><span class="tag onerror">Chỉ khi lỗi</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>/root/diag.sh</code></pre></div>
+<p>Đối chiếu dòng lỗi (mục 4 và 6 của kết quả) với bảng ở Phần 11. Nếu vẫn chưa xử lý được, gửi nguyên đầu ra của <code>diag.sh</code> để chẩn đoán.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9e" data-part="p9"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-9f">
+<div class="step-head"><span class="num">9f</span><h3>CHECKPOINT 9 — Cả ba truy vấn trả kết quả</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><p>Bước 9b, 9c và 9d đều in ra bảng kết quả, không có <code>FAILED: Execution Error</code>.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="9f" data-part="p9"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p10">
+<h2 class="sec" data-part="p10"><span class="badge">10</span>Kết nối IntelliJ IDEA từ Windows</h2>
+<p class="sec-intro">Chỉ thực hiện sau khi Beeline trong container đã chạy được.</p>
+<section class="step" id="s-10a">
+<div class="step-head"><span class="num">10a</span><h3>Kiểm tra ánh xạ cổng</h3><div class="tags"></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker port hadoop-master 10000</code></pre></div>
+<div class="expect"><div class="lbl">Kết quả mong đợi</div><pre>0.0.0.0:10000</pre></div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="10a" data-part="p10"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step" id="s-10b">
+<div class="step-head"><span class="num">10b</span><h3>Thêm Data Source</h3><div class="tags"></div></div>
+<div class="step-body"><p>1. View → Tool Windows → <strong>Database</strong>.<br>2. Dấu <strong>+</strong> → Data Source → <strong>Apache Hive</strong>.<br>3. Nếu được hỏi driver: <strong>Download missing driver files</strong>.<br>4. Host <code>localhost</code> · Port <code>10000</code> · Database <code>default</code> · User <code>root</code> · Password để trống.<br>5. URL phải là: <code>jdbc:hive2://localhost:10000/default</code>.<br>6. <strong>Test Connection</strong> → Apply/OK.</p>
+<div class="note info"><b class="t">Ghi chú</b>Không thấy Apache Hive: cần IntelliJ IDEA Ultimate (có Database Tools). Bản Community dùng Beeline hoặc DBeaver.</div></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="10b" data-part="p10"> <span>Đã xong bước này</span></label></div>
+</section>
+<section class="step check" id="s-10c">
+<div class="step-head"><span class="num">10c</span><h3>CHECKPOINT 10 — Chạy SQL từ IntelliJ</h3><div class="tags"><span class="tag check">CHECKPOINT</span></div></div>
+<div class="step-body"><div class="code"><div class="code-bar"><span class="loc">Console SQL của IntelliJ</span><button class="copy" type="button">Copy</button></div><pre><code>USE lab;
+SELECT grp, COUNT(*) FROM t_num GROUP BY grp;</code></pre></div>
+<p>Truy vấn trả kết quả giống Beeline.</p></div>
+<div class="foot"><label class="chk"><input type="checkbox" data-key="10c" data-part="p10"> <span>Checkpoint đạt</span></label></div>
+</section>
+</section>
+<section class="part" id="p11">
+<h2 class="sec"><span class="badge">11</span>Troubleshooting — tra theo thông báo lỗi</h2>
+<p class="sec-intro">Gõ một phần thông báo lỗi (ví dụ <code>MRAppMaster</code>, <code>return code</code>, <code>Derby</code>) để lọc. Khi chưa rõ lỗi gì, chạy <code>/root/diag.sh</code> trước.</p>
+<h3 class="sub-h">Vì sao Job 1 có thể chết trước khi có Mapper</h3>
+<p class="sec-intro">Lỗi này nằm ở tầng khởi chạy MapReduce/YARN và nạp thư viện, không phải SQL hay dữ liệu <code>ARRAY</code>. Có 7 nguyên nhân thường gặp, hướng dẫn này đã xử lý sẵn:</p>
+<div class="cards"><div class="card"><h4>Thiếu classpath MapReduce</h4><p>Nếu <code>mapred-site.xml</code> chỉ đặt <code>HADOOP_MAPRED_HOME</code> mà không có <code>mapreduce.application.classpath</code>/<code>yarn.application.classpath</code> thì ApplicationMaster không nạp được <code>MRAppMaster</code>.</p><span class="fix">Sửa ở bước 4d, 4e</span></div><div class="card"><h4>Biến môi trường không tới được tiến trình</h4><p><code>source ~/.bashrc</code> bị Ubuntu bỏ qua trong shell không tương tác → <code>start-all.sh</code>, SSH của Hadoop và HiveServer2 có thể thiếu <code>JAVA_HOME</code>, <code>HADOOP_HOME</code>, <code>HADOOP_CONF_DIR</code>.</p><span class="fix">Sửa ở bước 3a–3d, 8a</span></div><div class="card"><h4>Hive 4 mặc định chạy Tez</h4><p>Không đặt <code>hive.execution.engine=mr</code> thì Hive tìm Tez (chưa cài). Có thêm map-join cục bộ và vectorization gây lỗi ngay khi khởi chạy.</p><span class="fix">Sửa ở bước 7b</span></div><div class="card"><h4>YARN không cấp được container</h4><p>Bộ nhớ NodeManager, giới hạn bộ nhớ ảo, ngưỡng đĩa 90%, và 10% cho AM → job kẹt hoặc bị kill trước khi có Mapper.</p><span class="fix">Sửa ở bước 4e, 4f</span></div><div class="card"><h4>Metastore Derby phụ thuộc thư mục chạy</h4><p>URL tương đối <code>databaseName=metastore_db</code> chỉ đúng khi chạy từ <code>/root</code>; hướng dẫn dùng đường dẫn tuyệt đối.</p><span class="fix">Sửa ở bước 7b</span></div><div class="card"><h4>Xung đột Protobuf khi ghi bảng ORC</h4><p>Hadoop mang <code>protobuf-java-2.5.0</code> đứng trước Protobuf 3.x của Hive trong classpath của task. Reducer ghi ORC chết với <code>NoSuchMethodError ... Internal.checkNotNull</code>, trong khi truy vấn thường vẫn chạy. Sửa bằng cấu hình, không động đến jar.</p><span class="fix">Sửa ở bước 7b, 9d</span></div><div class="card"><h4>Link tải Hadoop có thể 404</h4><p><code>downloads.apache.org</code> chỉ giữ bản mới nhất; hướng dẫn dùng <code>archive.apache.org</code>.</p><span class="fix">Sửa ở bước 2b</span></div></div>
+<h3 class="sub-h" style="margin-top:28px">Tra theo thông báo lỗi</h3>
+<input class="search" id="trSearch" type="search" placeholder="Tìm trong các lỗi thường gặp...">
+<details class="tr"><summary><span>NoSuchMethodError / Error: com.google.protobuf.Internal.checkNotNull(Ljava/lang/Object;)Ljava/lang/Object; (reducer chết, return code 2, thường khi INSERT vào bảng STORED AS ORC)</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Xung đột Protobuf: classpath của Hadoop có <code>protobuf-java-2.5.0</code> đứng trước, trong khi bộ ghi ORC của Hive cần Protobuf 3.x. Cả 3 lần thử lại của reducer đều chết giống nhau. Các truy vấn không ghi ORC vẫn chạy bình thường nên lỗi này hiện ra muộn.</p><p><span class="lbl2">Cách xử lý</span><br>Đã sửa sẵn ở Phần 7b. Nếu <code>hive-site.xml</code> của bạn chưa có, thêm hai property rồi khởi động lại HiveServer2. <strong>Không chép đè hay xóa jar Protobuf.</strong> Nếu cần thử nhanh trong một phiên Beeline: <code>SET mapreduce.job.user.classpath.first=true;</code> và <code>ADD JAR /root/apache-hive-4.0.1-bin/lib/protobuf-java-3.24.4.jar;</code>.</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>cp $HIVE_HOME/conf/hive-site.xml $HIVE_HOME/conf/hive-site.xml.bak
+sed -i 's#&lt;/configuration&gt;#  &lt;property&gt;\n    &lt;name&gt;mapreduce.job.user.classpath.first&lt;/name&gt;\n    &lt;value&gt;true&lt;/value&gt;\n  &lt;/property&gt;\n  &lt;property&gt;\n    &lt;name&gt;hive.aux.jars.path&lt;/name&gt;\n    &lt;value&gt;file:///root/apache-hive-4.0.1-bin/lib/protobuf-java-3.24.4.jar&lt;/value&gt;\n  &lt;/property&gt;\n&lt;/configuration&gt;#' $HIVE_HOME/conf/hive-site.xml
+xmllint --noout $HIVE_HOME/conf/hive-site.xml &amp;&amp; echo "OK hive-site.xml"
+grep -c '&lt;property&gt;' $HIVE_HOME/conf/hive-site.xml
+/root/stop-all.sh &amp;&amp; /root/start-all.sh</code></pre></div></div></details><details class="tr"><summary><span>SemanticException [Error 10011]: Invalid function map_from_entries</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br><code>map_from_entries</code> là hàm của Spark SQL/Trino, <strong>không có trong Hive 4.0.1</strong>. Đây là lỗi cú pháp lúc biên dịch, không liên quan MapReduce.</p><p><span class="lbl2">Cách xử lý</span><br>Thay bằng <code>str_to_map</code> (gộp cặp thành chuỗi rồi tách thành MAP). Lưu ý khóa hoặc giá trị không được chứa <code>~</code> hay <code>=</code>:</p><div class="code"><div class="code-bar"><span class="loc">Biểu thức HiveQL</span><button class="copy" type="button">Copy</button></div><pre><code>str_to_map(concat_ws('~', collect_list(concat(ld.name, '=', d.name))), '~', '=')</code></pre></div></div></details><details class="tr"><summary><span>Could not find or load main class org.apache.hadoop.mapreduce.v2.app.MRAppMaster</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Container ApplicationMaster không có thư viện MapReduce — thiếu <code>mapreduce.application.classpath</code> / <code>HADOOP_MAPRED_HOME</code>. Đây là dạng lỗi «chết ngay Job 1, chưa có Mapper».</p><p><span class="lbl2">Cách xử lý</span><br>Làm lại Phần 4d và 4e (ghi đè <code>mapred-site.xml</code>, <code>yarn-site.xml</code>), rồi khởi động lại YARN và HiveServer2:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>/root/stop-all.sh &amp;&amp; /root/start-all.sh</code></pre></div></div></details><details class="tr"><summary><span>FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.mr.MapRedTask</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Thông báo chung của Hive — nguyên nhân thật nằm ở log YARN hoặc log HiveServer2.</p><p><span class="lbl2">Cách xử lý</span><br>Chạy <code>diag.sh</code> và xem mục 4 (stderr của ApplicationMaster) và mục 6 (log HiveServer2), rồi tra tiếp theo các dòng lỗi trong bảng này.</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>/root/diag.sh</code></pre></div></div></details><details class="tr"><summary><span>return code 1/2 from org.apache.hadoop.hive.ql.exec.mr.MapredLocalTask</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Hive tự chuyển sang map-join và chạy tác vụ cục bộ (JVM con) bị lỗi bộ nhớ/classpath.</p><p><span class="lbl2">Cách xử lý</span><br>Đảm bảo <code>hive.auto.convert.join=false</code> trong <code>hive-site.xml</code> (Phần 7b), hoặc tạm thời trong phiên Beeline:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>SET hive.auto.convert.join=false;</code></pre></div></div></details><details class="tr"><summary><span>Container ... is running beyond virtual memory limits / Killing container</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>YARN kiểm tra bộ nhớ ảo và kill container.</p><p><span class="lbl2">Cách xử lý</span><br>Đã tắt bằng <code>yarn.nodemanager.vmem-check-enabled=false</code> (Phần 4e). Nếu thấy <em>physical memory</em>: tăng <code>mapreduce.map.memory.mb</code> và <code>-Xmx</code> tương ứng, hoặc cấp thêm RAM cho Docker.</p></div></details><details class="tr"><summary><span>Application stuck ở ACCEPTED / job đứng ở map 0% reduce 0% / Total Nodes:0</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>NodeManager chưa đăng ký, bị UNHEALTHY, hoặc không đủ RAM để cấp container cho ApplicationMaster.</p><p><span class="lbl2">Cách xử lý</span><br>Kiểm tra nút và lý do:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>yarn node -list -all
+yarn node -status $(yarn node -list 2&gt;/dev/null | awk '/hadoop-master/{print $1}' | head -1)
+tail -n 50 $HADOOP_HOME/logs/hadoop-root-nodemanager-*.log</code></pre></div></div></details><details class="tr"><summary><span>1/1 local-dirs have errors / NodeManager UNHEALTHY: local-dirs are bad</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Đĩa của Docker đã đầy hơn ngưỡng 90%.</p><p><span class="lbl2">Cách xử lý</span><br>Giải phóng ổ đĩa (trên Windows: <code>docker system prune</code>, dọn image/volume không dùng). Cấu hình 99% ở Phần 4e đã nới ngưỡng này; kiểm tra:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>df -h /</code></pre></div></div></details><details class="tr"><summary><span>Retrying connect to server: 0.0.0.0/0.0.0.0:8032 hoặc hadoop-master:8032 Connection refused</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>ResourceManager chưa chạy, hoặc HiveServer2 không đọc <code>yarn-site.xml</code> (thiếu <code>HADOOP_CONF_DIR</code>).</p><p><span class="lbl2">Cách xử lý</span><br>Kiểm tra <code>jps</code> có <code>ResourceManager</code>; kiểm tra Phần 7a; khởi động lại HiveServer2 bằng <code>start-all.sh</code>.</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>jps | grep ResourceManager
+grep HADOOP_CONF_DIR /root/apache-hive-4.0.1-bin/conf/hive-env.sh</code></pre></div></div></details><details class="tr"><summary><span>Permission denied: user=root, access=WRITE, inode="/tmp/hive"</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Thư mục tạm của Hive/YARN trên HDFS không ghi được.</p><p><span class="lbl2">Cách xử lý</span><br>Tạo lại quyền (Phần 5d):</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>hdfs dfs -mkdir -p /tmp/hive /tmp/hadoop-yarn/staging
+hdfs dfs -chmod -R 777 /tmp /user/hive</code></pre></div></div></details><details class="tr"><summary><span>java.lang.NoSuchMethodError: com.google.common.base.Preconditions.checkArgument</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Xung đột phiên bản Guava giữa Hive và Hadoop. Hive 4.0.1 được build cùng Hadoop 3.3.6 nên thường không gặp — <strong>chỉ làm khi thấy đúng lỗi này.</strong></p><p><span class="lbl2">Cách xử lý</span><br>Chỉ thay đúng jar Guava (không đụng Protobuf hay jar khác), sao lưu trước, rồi khởi động lại:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>ls $HADOOP_HOME/share/hadoop/common/lib/guava-*.jar $HIVE_HOME/lib/guava-*.jar
+mkdir -p /root/jar-backup &amp;&amp; mv $HIVE_HOME/lib/guava-*.jar /root/jar-backup/
+cp $HADOOP_HOME/share/hadoop/common/lib/guava-*.jar $HIVE_HOME/lib/
+/root/stop-all.sh &amp;&amp; /root/start-all.sh</code></pre></div></div></details><details class="tr"><summary><span>Another instance of Derby may have already booted the database / ERROR XSDB6</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Hai tiến trình cùng mở <code>metastore_db</code> (HiveServer2 + schematool), hoặc file khóa còn sót lại sau khi bị kill.</p><p><span class="lbl2">Cách xử lý</span><br>Tắt HiveServer2, xóa file khóa, chạy lại:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>pkill -f '[H]iveServer2'; sleep 3
+rm -f /root/metastore_db/*.lck
+/root/start-all.sh</code></pre></div></div></details><details class="tr"><summary><span>Table/View 'DBS' does not exist / Failed to start database 'metastore_db'</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Hive đang trỏ tới một <code>metastore_db</code> rỗng ở thư mục khác (URL Derby tương đối, khởi động từ thư mục lạ).</p><p><span class="lbl2">Cách xử lý</span><br>Dùng URL tuyệt đối như Phần 7b. Kiểm tra:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>grep -A1 ConnectionURL $HIVE_HOME/conf/hive-site.xml
+ls -d /root/metastore_db</code></pre></div></div></details><details class="tr"><summary><span>Tez: Cannot find class org.apache.tez... / TezTask / return code from TezTask</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Hive 4 mặc định chạy Tez nhưng chưa cài Tez.</p><p><span class="lbl2">Cách xử lý</span><br>Đảm bảo <code>hive.execution.engine=mr</code> trong <code>hive-site.xml</code> rồi khởi động lại HiveServer2; hoặc trong phiên Beeline:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>SET hive.execution.engine=mr;</code></pre></div></div></details><details class="tr"><summary><span>ssh: connect to host localhost port 22: Connection refused (khi start-dfs.sh)</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Dịch vụ SSH chưa chạy (mỗi lần container khởi động lại phải bật lại).</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>service ssh start</code></pre></div></div></details><details class="tr"><summary><span>start-all.sh: hdfs: command not found (khi chạy bằng docker exec)</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Script nạp biến từ <code>~/.bashrc</code> — file này thoát sớm với shell không tương tác.</p><p><span class="lbl2">Cách xử lý</span><br>Dùng script ở Phần 8a (nạp trực tiếp <code>/root/hadoop-hive-env.sh</code>) và đảm bảo Phần 3a–3b đã làm.</p></div></details><details class="tr"><summary><span>NameNode is in safe mode</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>NameNode vừa khởi động, chưa đủ block báo về.</p><p><span class="lbl2">Cách xử lý</span><br>Đợi hoặc ép thoát:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>hdfs dfsadmin -safemode wait
+# hoặc: hdfs dfsadmin -safemode leave</code></pre></div></div></details><details class="tr"><summary><span>DataNode không lên / File could only be replicated to 0 nodes / Incompatible clusterIDs</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>NameNode bị format lại nhưng thư mục DataNode còn clusterID cũ.</p><p><span class="lbl2">Cách xử lý</span><br>Chỉ khi chấp nhận mất dữ liệu HDFS:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>stop-dfs.sh
+rm -rf /root/hadoop-3.3.6/data/datanode/*
+start-dfs.sh</code></pre></div></div></details><details class="tr"><summary><span>java.lang.OutOfMemoryError: Java heap space (HiveServer2)</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Heap của HiveServer2 quá nhỏ.</p><p><span class="lbl2">Cách xử lý</span><br>Tăng <code>HADOOP_HEAPSIZE</code> trong <code>hive-env.sh</code> (Phần 7a) lên 2048 nếu Docker còn RAM, rồi khởi động lại.</p></div></details><details class="tr"><summary><span>gzip: stdin: unexpected end of file khi giải nén</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>File tải về bị đứt giữa chừng.</p><p><span class="lbl2">Cách xử lý</span><br>Xóa file và tải lại:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>rm -f /root/hadoop-3.3.6.tar.gz /root/apache-hive-4.0.1-bin.tar.gz
+# rồi chạy lại Phần 2b/2c</code></pre></div></div></details><details class="tr"><summary><span>HiveServer2 chạy lần thứ hai báo Exit 1 / cổng 10000 đã bị chiếm</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Đã có HiveServer2 đang chạy.</p><p><span class="lbl2">Cách xử lý</span><br>Không khởi động thêm instance. <code>start-all.sh</code> đã tự tắt bản cũ trước khi chạy:</p><div class="code"><div class="code-bar"><span class="loc">Trong container</span><button class="copy" type="button">Copy</button></div><pre><code>ss -lntp | grep 10000
+ps -ef | grep '[H]iveServer2'</code></pre></div></div></details><details class="tr"><summary><span>IntelliJ không kết nối được localhost:10000</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>HiveServer2 chưa lên, hoặc container được tạo không có <code>-p 10000:10000</code>.</p><p><span class="lbl2">Cách xử lý</span><br>Kiểm tra Beeline trong container trước. Nếu <code>docker port hadoop-master 10000</code> không in gì thì phải tạo lại container từ bản sao (dữ liệu giữ nguyên):</p><div class="code"><div class="code-bar"><span class="loc">PowerShell / Terminal Windows</span><button class="copy" type="button">Copy</button></div><pre><code>docker stop hadoop-master
+docker commit hadoop-master hadoop-hive:backup
+docker rm hadoop-master
+docker run -it -d --name hadoop-master -h hadoop-master -p 10000:10000 -p 10002:10002 -p 9870:9870 -p 8088:8088 -p 19888:19888 hadoop-hive:backup
+docker exec hadoop-master bash /root/start-all.sh</code></pre></div></div></details><details class="tr"><summary><span>Cảnh báo SLF4J: multiple SLF4J bindings</span></summary><div class="tr-body"><p><span class="lbl2">Nguyên nhân</span><br>Chỉ là cảnh báo trùng binding.</p><p><span class="lbl2">Cách xử lý</span><br>Bỏ qua, đừng xóa JAR của Hadoop/Hive nếu chưa có lỗi cụ thể.</p></div></details>
+<div class="empty" id="trEmpty">Không có mục khớp. Chạy <code>/root/diag.sh</code> và đọc mục 4 và 6.</div>
+</section>
+<section class="part" id="p12">
+<h2 class="sec" data-part="p12"><span class="badge">12</span>Checklist hoàn thành</h2>
+<p class="sec-intro">Tick khi từng mục đã được xác nhận bằng lệnh thật trong môi trường của bạn.</p>
+<div class="final"><label class="final-item"><input type="checkbox" data-key="f1" data-part="p12"><span>Container <code>hadoop-master</code> chạy, ánh xạ cổng 10000 (và 9870, 8088)</span></label><label class="final-item"><input type="checkbox" data-key="f2" data-part="p12"><span><code>java -version</code> là OpenJDK 8, <code>hadoop version</code> là 3.3.6, <code>hive --version</code> là 4.0.1</span></label><label class="final-item"><input type="checkbox" data-key="f3" data-part="p12"><span><code>ssh localhost 'echo $JAVA_HOME'</code> in ra đường dẫn Java (biến môi trường nạp được trong shell không tương tác)</span></label><label class="final-item"><input type="checkbox" data-key="f4" data-part="p12"><span>5 file XML Hadoop và <code>hive-site.xml</code> đều qua <code>xmllint</code></span></label><label class="final-item"><input type="checkbox" data-key="f5" data-part="p12"><span><code>jps</code> có NameNode, DataNode, SecondaryNameNode, ResourceManager, NodeManager, RunJar (HiveServer2)</span></label><label class="final-item"><input type="checkbox" data-key="f6" data-part="p12"><span><code>hdfs dfsadmin -report</code> có 1 Live datanode; <code>yarn node -list</code> có 1 node RUNNING</span></label><label class="final-item"><input type="checkbox" data-key="f7" data-part="p12"><span>Job mẫu <code>pi</code> chạy xong với <code>completed successfully</code></span></label><label class="final-item"><input type="checkbox" data-key="f8" data-part="p12"><span><code>schematool -dbType derby -info</code> báo schema 4.0.0</span></label><label class="final-item"><input type="checkbox" data-key="f9" data-part="p12"><span>Beeline: <code>hive.execution.engine=mr</code> và <code>mapreduce.framework.name=yarn</code></span></label><label class="final-item"><input type="checkbox" data-key="f10" data-part="p12"><span>Truy vấn <code>GROUP BY</code> chạy xong qua <code>Launching Job 1 out of 1</code></span></label><label class="final-item"><input type="checkbox" data-key="f11" data-part="p12"><span>Truy vấn có cột <code>ARRAY</code> (<code>explode</code>, <code>size</code>) trả kết quả</span></label><label class="final-item"><input type="checkbox" data-key="f12" data-part="p12"><span><code>INSERT OVERWRITE</code> vào bảng <code>STORED AS ORC</code> với <code>collect_list</code> chạy xong (không còn lỗi Protobuf <code>checkNotNull</code>)</span></label><label class="final-item"><input type="checkbox" data-key="f13" data-part="p12"><span><code>hive-site.xml</code> có 17 property, gồm <code>hive.aux.jars.path</code> và <code>mapreduce.job.user.classpath.first</code></span></label><label class="final-item"><input type="checkbox" data-key="f14" data-part="p12"><span>IntelliJ Test Connection thành công qua <code>jdbc:hive2://localhost:10000/default</code></span></label></div>
+</section>
+</main>
+</div>
+<div class="toast" id="toast">Đã copy</div>
+
+<script>
+(function(){
+  var KEY = "hadoop-hive-guide-v2";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[data-key]'));
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 1400); }
+
+  function refresh(){
+    var done = 0;
+    boxes.forEach(function(b){
+      var on = !!state[b.dataset.key];
+      b.checked = on; if (on) done++;
+      var step = b.closest('.step'); if (step) step.classList.toggle('done', on);
+      var lab = b.closest('label.final-item'); if (lab) lab.classList.toggle('on', on);
+    });
+    var total = boxes.length, pct = total ? Math.round(done * 100 / total) : 0;
+    document.getElementById('progTxt').textContent = done + ' / ' + total + ' (' + pct + '%)';
+    document.getElementById('barFill').style.width = pct + '%';
+    document.getElementById('barWrap').setAttribute('aria-valuenow', pct);
+    document.querySelectorAll('[data-part]').forEach(function(el){
+      var part = el.dataset.part, all = boxes.filter(function(b){ return b.dataset.part === part; });
+      if (!all.length) return;
+      var d = all.filter(function(b){ return state[b.dataset.key]; }).length;
+      var complete = d === all.length;
+      if (el.classList.contains('cnt')) el.textContent = d + '/' + all.length;
+      if (el.tagName === 'A') el.classList.toggle('complete', complete);
+      if (el.tagName === 'H2') el.classList.toggle('complete', complete);
+    });
+  }
+  boxes.forEach(function(b){ b.addEventListener('change', function(){ state[b.dataset.key] = b.checked; save(); refresh(); }); });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if (confirm('Xóa toàn bộ tiến độ checkpoint trên trang này?')) { state = {}; save(); refresh(); toast('Đã đặt lại'); }
+  });
+  document.getElementById('nextBtn').addEventListener('click', function(){
+    var nxt = boxes.filter(function(b){ return !state[b.dataset.key]; })[0];
+    if (!nxt) { toast('Tất cả checkpoint đã hoàn thành 🎉'); return; }
+    var el = nxt.closest('.step') || nxt.closest('label'); el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.animate([{boxShadow:'0 0 0 3px var(--accent)'},{boxShadow:'0 0 0 0 transparent'}], {duration:1400});
+  });
+  document.querySelectorAll('[data-markparts]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var parts = btn.dataset.markparts.split(',');
+      boxes.forEach(function(b){ if (parts.indexOf(b.dataset.part) > -1) state[b.dataset.key] = true; });
+      save(); refresh(); toast('Đã đánh dấu xong Phần ' + parts.join(', '));
+    });
+  });
+
+  /* copy */
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta); return ok;
+  }
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.closest('.code').querySelector('pre').innerText.replace(/\n$/, '');
+      function done(ok){
+        btn.textContent = ok ? 'Đã copy ✓' : 'Chọn & copy tay'; btn.classList.toggle('ok', ok);
+        if (ok) toast('Đã copy vào clipboard');
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(fallbackCopy(text)); });
+      } else { done(fallbackCopy(text)); }
+    });
+  });
+
+  /* sidebar */
+  var side = document.getElementById('side');
+  document.getElementById('menuBtn').addEventListener('click', function(){ side.classList.toggle('open'); });
+  side.addEventListener('click', function(e){ if (e.target.closest('a')) side.classList.remove('open'); });
+  var links = Array.prototype.slice.call(side.querySelectorAll('a'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) {
+          links.forEach(function(a){ a.classList.toggle('active', a.getAttribute('href') === '#' + en.target.id); });
+        }
+      });
+    }, {rootMargin:'-80px 0px -70% 0px'});
+    document.querySelectorAll('section.part').forEach(function(s){ io.observe(s); });
+  }
+
+  /* troubleshooting filter */
+  var q = document.getElementById('trSearch');
+  if (q) q.addEventListener('input', function(){
+    var t = q.value.trim().toLowerCase(), shown = 0;
+    document.querySelectorAll('details.tr').forEach(function(d){
+      var hit = !t || d.textContent.toLowerCase().indexOf(t) > -1;
+      d.style.display = hit ? '' : 'none'; if (hit) shown++;
+      if (t && hit) d.open = true;
+    });
+    document.getElementById('trEmpty').style.display = shown ? 'none' : 'block';
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

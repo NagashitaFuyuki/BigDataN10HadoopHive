@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N10Hive - Trung tâm Điều hành & Tài liệu Hadoop - Hive</title>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface2:#f0f2f6; --text:#1b2330; --muted:#586374; --line:#dfe3ea;
+  --accent:#2356d3; --accent-soft:#e6edfd; --ok:#17794a; --ok-soft:#e3f4ea; --warn:#9a5700; --warn-soft:#fff2dc;
+  --danger:#b3261e; --danger-soft:#fde8e6; --info:#245c9e; --info-soft:#e5f0fb;
+  --code-bg:#0c1320; --code-bar:#162133; --code-text:#d7e3f4; --code-muted:#8fa3bd;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+    --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+    --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+    --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#151b23; --surface2:#1b232d; --text:#e6ebf2; --muted:#9aa7b8; --line:#273141;
+  --accent:#7aa5ff; --accent-soft:#1b2a4a; --ok:#4cc38a; --ok-soft:#12291f; --warn:#f0b34d; --warn-soft:#2f2412;
+  --danger:#ff8a80; --danger-soft:#33191a; --info:#7db8f2; --info-soft:#14263a;
+  --code-bg:#080d15; --code-bar:#111a28; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+p{margin:0}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.topbar-in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:8px}
+.brand-badge{background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:12px}
+.nav-links{display:flex;gap:12px}
+.tb-btn{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s ease}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.tb-btn.primary:hover{color:#fff;filter:brightness(1.08)}
+
+/* ---------- layout & container ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 80px}
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px;box-shadow:var(--shadow);margin-bottom:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+.hero h1{font-size:clamp(1.75rem,3.5vw,2.3rem);line-height:1.2;margin:0 0 12px;letter-spacing:-.01em}
+.hero>p{color:var(--muted);max-width:75ch;font-size:1.05rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{font-size:13px;padding:4px 12px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);color:var(--text)}
+.chip b{color:var(--accent)}
+
+/* ---------- grid cards ---------- */
+.section-title{font-size:1.35rem;margin:32px 0 16px;display:flex;align-items:center;gap:10px}
+.section-title .badge{width:28px;height:28px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease,border-color .15s ease}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card-tag{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:6px;width:fit-content;margin-bottom:12px}
+.card-tag.interactive{background:var(--ok-soft);color:var(--ok)}
+.card-tag.resource{background:var(--info-soft);color:var(--info)}
+.card-tag.doc{background:var(--accent-soft);color:var(--accent)}
+.card-tag.media{background:var(--warn-soft);color:var(--warn)}
+
+.card h3{margin:0 0 8px;font-size:1.2rem;line-height:1.3}
+.card p{color:var(--muted);font-size:14.5px;margin-bottom:20px;flex:1}
+.card-action{display:flex;align-items:center;justify-content:space-between;pt:16px;border-top:1px solid var(--line)}
+.btn-action{width:100%;text-align:center;justify-content:center;padding:10px 16px;font-weight:600}
+
+/* ---------- timeline flow ---------- */
+.flow-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;margin-top:16px;box-shadow:var(--shadow)}
+.flow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:16px}
+.flow-step{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:16px;position:relative}
+.flow-step .num{position:absolute;top:12px;right:12px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.flow-step h4{margin:0 0 6px;font-size:15px;color:var(--text)}
+.flow-step p{font-size:13.5px;color:var(--muted)}
+
+/* ---------- footer ---------- */
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span>N10Hive</span>
+      <span class="brand-badge">Hadoop 3.3.6 · Hive 4.0.1</span>
+    </div>
+    <div class="nav-links">
+      <a href="N10HadoopHiveInstall.html" class="tb-btn">⚙️ Cài đặt Docker</a>
+      <a href="N10HadoopHiveQuery.html" class="tb-btn primary">🔍 Truy vấn HiveQL</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Trung tâm Tài liệu & Điều hành Hệ thống</div>
+    <h1>Triển khai Hadoop, Hive & Truy vấn Cơ sở dữ liệu N10Hive</h1>
+    <p>Hệ thống hỗ trợ toàn bộ quy trình từ khởi tạo môi trường Docker, cài đặt cụm Hadoop 3.3.6 và Hive 4.0.1 (ngôn ngữ MapReduce/YARN), nạp dataset thực tế đến thực thi 25 bảng và các truy vấn dữ liệu lớn HiveQL.</p>
+    <div class="chips">
+      <span class="chip">Ubuntu <b>22.04 LTS</b></span>
+      <span class="chip">Java <b>8 (OpenJDK)</b></span>
+      <span class="chip">Engine <b>MapReduce / YARN</b></span>
+      <span class="chip">Metastore <b>Derby</b></span>
+      <span class="chip">Database <b>N10Hive (25 Tables)</b></span>
+    </div>
+  </section>
+
+  <h2 class="section-title"><span class="badge">1</span>Hướng dẫn Trực quan & Tương tác</h2>
+  <div class="grid-cards">
+    <div class="card">
+      <div>
+        <div class="card-tag interactive">Interactive Guide</div>
+        <h3>1. Hướng dẫn Cài đặt Hadoop & Hive trên Docker</h3>
+        <p>Quy trình 10 phần đầy đủ từng lệnh bash/xml: Cấu hình RAM Docker, cài đặt Java 8, Hadoop 3.3.6, Hive 4.0.1, nạp biến môi trường, sửa lỗi Protobuf/Classpath, khởi chạy MapReduce và kết nối IntelliJ IDEA.</p>
+      </div>
+      <div class="card-action">
+        <a href="N10HadoopHiveInstall.html" class="tb-btn primary btn-action">Mở Hướng dẫn Cài đặt →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="card-tag interactive">Interactive Guide</div>
+        <h3>2. Hướng dẫn Nhập dữ liệu & Truy vấn HiveQL</h3>
+        <p>Quy trình thực thi 10 bước nạp 15 bảng gốc, 6 bảng mở rộng Big Data, bảng phức hợp (ARRAY, MAP, STRUCT), ORC format và các truy vấn mẫu JOIN, Window Function, UNION ALL, CRUD ACID.</p>
+      </div>
+      <div class="card-action">
+        <a href="N10HadoopHiveQuery.html" class="tb-btn primary btn-action">Mở Hướng dẫn Truy vấn →</a>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title"><span class="badge">2</span>Tài nguyên Dữ liệu & Báo cáo Chi tiết</h2>
+  <div class="grid-cards">
+    <div class="card">
+      <div>
+        <div class="card-tag resource">Dataset Google Drive</div>
+        <h3>Bộ Dữ liệu N10Hive (Raw Dataset)</h3>
+        <p>File lưu trữ toàn bộ dữ liệu mẫu ban đầu (dạng nén/gốc) phục vụ việc copy vào Container Docker và nạp trực tiếp lên HDFS <code>/data/N10Hive/</code>.</p>
+      </div>
+      <div class="card-action">
+        <a href="https://drive.google.com/file/d/1Q46a7u-B4qQ1aUTRtCusZ6RMT4zEsjpQ/view?usp=sharing" target="_blank" rel="noopener" class="tb-btn btn-action">Tải Dataset (Drive) ↗</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="card-tag doc">Google Docs Report</div>
+        <h3>Báo cáo Tổng hợp Cài đặt & Truy vấn</h3>
+        <p>Văn bản báo cáo tổng hợp chi tiết đã được đồng bộ chuẩn mực từ hai phần Cài đặt và Truy vấn, lưu trữ trực tiếp tại Google Docs để xem hoặc nộp báo cáo.</p>
+      </div>
+      <div class="card-action">
+        <a href="https://docs.google.com/document/d/12lPKelHsBMODzVY4IeUPuDx3BYJwk8LG-WUW8OlyDnk/edit?usp=sharing" target="_blank" rel="noopener" class="tb-btn btn-action">Xem Báo cáo (Docs) ↗</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="card-tag media">Video Tutorial</div>
+        <h3>Video Hướng dẫn Thực hành Chi tiết</h3>
+        <p>Video ghi lại toàn bộ thao tác cài đặt môi trường, sửa lỗi cấu hình, khởi động cụm Hadoop/HiveServer2 và thực thi các câu lệnh SQL trực tiếp trong Beeline.</p>
+      </div>
+      <div class="card-action">
+        <a href="https://drive.google.com/file/d/1b2ModjAcmHiB8rz3tCH-KPBwcqpT4LTa/view?usp=sharing" target="_blank" rel="noopener" class="tb-btn btn-action">Xem Video (Drive) ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title"><span class="badge">3</span>Tóm tắt Qúa trình Thực hiện</h2>
+  <div class="flow-wrap">
+    <div class="flow-grid">
+      <div class="flow-step">
+        <span class="num">01</span>
+        <h4>Khởi tạo Docker</h4>
+        <p>Tạo container <code>hadoop-master</code> từ Ubuntu 22.04, cấu hình RAM, SSH và mở đầy đủ các cổng (9870, 8088, 10000).</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">02</span>
+        <h4>Cấu hình Hadoop & Hive</h4>
+        <p>Giải nén Hadoop 3.3.6, Hive 4.0.1, nạp <code>hadoop-hive-env.sh</code>, cấu hình XML (MapReduce, YARN, Derby Metastore).</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">03</span>
+        <h4>Khởi động Dịch vụ</h4>
+        <p>Format NameNode, chạy HDFS, YARN, kiểm thử MapReduce <code>pi</code> và khởi động HiveServer2 lắng nghe cổng 10000.</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">04</span>
+        <h4>Nạp Dữ liệu & Truy vấn</h4>
+        <p>Đưa dataset từ Windows lên HDFS, sửa hàm <code>str_to_map</code>, chạy file SQL 00–07 trong Beeline và kiểm tra 25 bảng.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Hệ thống Tài liệu & Điều hành Hadoop - Hive Docker (N10Hive) · Triển khai trên môi trường Docker Pseudo-Distributed</p>
+  </footer>
+</div>
+
+</body>
+</html>
